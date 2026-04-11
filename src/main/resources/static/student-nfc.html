@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>출석하기 - NFC 수업 시스템</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    :root{
+      --primary:#4f46e5;--primary-light:#6366f1;--primary-dark:#3730a3;
+      --success:#10b981;--danger:#ef4444;
+      --bg:#0f0f1a;--surface:#1a1a2e;--surface2:#16213e;
+      --border:#2a2a4a;--text:#e2e8f0;--text-muted:#94a3b8;
+    }
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+
+    /* HEADER */
+    .dash-header{height:60px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0;}
+    .btn-back{background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:5px 12px;font-size:.8rem;cursor:pointer;transition:all .2s;}
+    .btn-back:hover{border-color:var(--primary-light);color:var(--primary-light);}
+    .dash-logo{display:flex;align-items:center;gap:8px;font-size:.95rem;font-weight:700;}
+    .logo-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--primary-dark),var(--primary-light));display:flex;align-items:center;justify-content:center;font-size:15px;}
+    .spacer{flex:1;}
+    .user-chip{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--text-muted);}
+    .user-av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--primary-dark),var(--primary-light));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;}
+    .btn-logout{background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:5px 12px;font-size:.75rem;cursor:pointer;transition:all .2s;margin-left:4px;}
+    .btn-logout:hover{border-color:var(--danger);color:var(--danger);}
+
+    /* MAIN */
+    main{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 20px;}
+
+    /* CARD */
+    .nfc-card{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:44px 40px;width:100%;max-width:480px;display:flex;flex-direction:column;align-items:center;gap:24px;text-align:center;}
+
+    /* 강의 정보 */
+    .lec-info-box{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:14px 18px;text-align:left;}
+    .lec-info-name{font-size:.95rem;font-weight:700;margin-bottom:4px;}
+    .lec-info-meta{font-size:.78rem;color:var(--text-muted);}
+
+    /* NFC 애니메이션 */
+    .nfc-wrap{position:relative;width:180px;height:180px;display:flex;align-items:center;justify-content:center;}
+    .ring{position:absolute;border-radius:50%;border:2px solid var(--primary-light);opacity:0;animation:pulse-ring 2.4s ease-out infinite;}
+    .ring:nth-child(1){width:100%;height:100%;animation-delay:0s;}
+    .ring:nth-child(2){width:72%;height:72%;animation-delay:.7s;}
+    .ring:nth-child(3){width:47%;height:47%;animation-delay:1.4s;}
+    @keyframes pulse-ring{0%{opacity:.55;transform:scale(.85);}100%{opacity:0;transform:scale(1.1);}}
+    .nfc-core{width:108px;height:108px;background:linear-gradient(135deg,var(--primary-dark),var(--primary-light));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:44px;cursor:pointer;box-shadow:0 0 40px rgba(79,70,229,.4);z-index:1;position:relative;transition:transform .15s,box-shadow .15s;}
+    .nfc-core:hover{transform:scale(1.06);box-shadow:0 0 56px rgba(99,102,241,.55);}
+    .nfc-core:active{transform:scale(.94);}
+
+    /* 성공 상태 */
+    .nfc-wrap.success .ring{border-color:var(--success);animation-duration:1.8s;}
+    .nfc-wrap.success .nfc-core{background:linear-gradient(135deg,#065f46,var(--success));box-shadow:0 0 44px rgba(16,185,129,.5);}
+    /* 오류 상태 */
+    .nfc-wrap.error .ring{border-color:var(--danger);}
+    .nfc-wrap.error .nfc-core{background:linear-gradient(135deg,#7f1d1d,var(--danger));box-shadow:0 0 44px rgba(239,68,68,.5);}
+
+    .nfc-label{font-size:1rem;font-weight:700;}
+    .nfc-sub{font-size:.82rem;color:var(--text-muted);max-width:280px;line-height:1.6;}
+
+    /* 결과 메시지 */
+    .result-box{width:100%;border-radius:14px;padding:14px 18px;font-size:.88rem;font-weight:600;display:none;}
+    .result-box.success{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:var(--success);}
+    .result-box.error{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);color:var(--danger);}
+    .result-box.show{display:block;}
+
+    /* 버튼 */
+    .btn-checkin{width:100%;background:linear-gradient(135deg,var(--primary-dark),var(--primary-light));color:#fff;border:none;border-radius:13px;padding:14px;font-size:.95rem;font-weight:700;cursor:pointer;transition:opacity .2s;display:flex;align-items:center;justify-content:center;gap:8px;}
+    .btn-checkin:hover{opacity:.85;}
+    .btn-checkin:disabled{opacity:.5;cursor:not-allowed;}
+    .btn-back-list{width:100%;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:13px;padding:12px;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .2s;}
+    .btn-back-list:hover{border-color:var(--primary-light);color:var(--primary-light);}
+
+    /* 자리 정보 */
+    .seat-info{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:12px 16px;width:100%;display:none;}
+    .seat-info.show{display:block;}
+    .seat-info-row{display:flex;justify-content:space-between;font-size:.82rem;color:var(--text-muted);margin-bottom:4px;}
+    .seat-info-row:last-child{margin-bottom:0;}
+    .seat-info-val{font-weight:600;color:var(--text);}
+  </style>
+</head>
+<body>
+
+  <header class="dash-header">
+    <button class="btn-back" onclick="goBack()">← 강의 목록</button>
+    <div class="logo-icon">🎓</div>
+    <div style="font-size:.9rem;font-weight:700;" id="headerLecName">강의</div>
+    <div class="spacer"></div>
+    <div class="user-chip">
+      <div class="user-av" id="avatarInitial">이</div>
+      <span style="color:var(--text);font-weight:600;" id="studentName">학생</span>
+    </div>
+    <button class="btn-logout" onclick="logout()">로그아웃</button>
+  </header>
+
+  <main>
+    <div class="nfc-card">
+
+      <!-- 강의 정보 -->
+      <div class="lec-info-box">
+        <div class="lec-info-name" id="lecName">-</div>
+        <div class="lec-info-meta" id="lecMeta">-</div>
+      </div>
+
+      <!-- NFC 애니메이션 -->
+      <div class="nfc-wrap" id="nfcWrap">
+        <div class="ring"></div>
+        <div class="ring"></div>
+        <div class="ring"></div>
+        <div class="nfc-core" id="nfcCore">📶</div>
+      </div>
+
+      <div class="nfc-label" id="nfcLabel">NFC를 찍어 주세요</div>
+      <div class="nfc-sub" id="nfcSub">
+        자리에 부착된 NFC 스티커에 휴대폰을 가까이 대거나,<br>
+        아래 버튼으로 출석을 처리하세요.
+      </div>
+
+      <!-- 결과 메시지 -->
+      <div class="result-box" id="resultBox"></div>
+
+      <!-- 출석 완료 시 자리 정보 -->
+      <div class="seat-info" id="seatInfo">
+        <div class="seat-info-row">
+          <span>배정 자리</span>
+          <span class="seat-info-val" id="seatNum">-</span>
+        </div>
+        <div class="seat-info-row">
+          <span>출석 시간</span>
+          <span class="seat-info-val" id="seatTime">-</span>
+        </div>
+      </div>
+
+      <!-- 버튼 -->
+      <button class="btn-checkin" id="btnCheckin" onclick="doCheckIn()">
+        <span>📶</span> 출석하기
+      </button>
+      <button class="btn-back-list" onclick="goBack()">← 강의 목록으로</button>
+    </div>
+  </main>
+
+  <script>
+    // URL 파라미터 파싱 (NFC 태그로 직접 접근한 경우)
+    const urlParams    = new URLSearchParams(window.location.search);
+    const urlLectureId = urlParams.get('lectureId');
+
+    // URL 파라미터 우선, 없으면 sessionStorage 사용
+    const lectureId = urlLectureId || sessionStorage.getItem('lecId');
+
+    // NFC 태그로 접근했는지 여부
+    const fromNfc = !!urlLectureId;
+
+    let checkedIn = false;
+
+    function init() {
+      if (!lectureId) { window.location.href = 'student-lectures.html'; return; }
+
+      // NFC 태그로 왔을 때 sessionStorage에 lectureId 저장
+      if (urlLectureId) sessionStorage.setItem('lecId', urlLectureId);
+
+      const name    = localStorage.getItem('studentName') || '학생';
+      const lecName = sessionStorage.getItem('lecName') || '강의';
+      const lecCode = sessionStorage.getItem('lecCode') || '';
+      const lecRoom = sessionStorage.getItem('lecRoom') || '';
+
+      document.getElementById('studentName').textContent   = name;
+      document.getElementById('avatarInitial').textContent = name.charAt(0);
+      document.getElementById('headerLecName').textContent = lecName;
+      document.getElementById('lecName').textContent       = lecName;
+      document.getElementById('lecMeta').textContent       =
+        [lecCode, lecRoom].filter(Boolean).join(' · ');
+
+      // NFC 태그로 접근한 경우 자동 체크인
+      if (fromNfc) {
+        document.getElementById('nfcLabel').textContent = 'NFC 인식됨 — 출석 처리 중...';
+        document.getElementById('nfcSub').textContent   = '잠시만 기다려 주세요.';
+        doCheckIn();
+      }
+    }
+
+    async function doCheckIn() {
+      if (checkedIn) return;
+      const btn = document.getElementById('btnCheckin');
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳</span> 처리 중...';
+
+      try {
+        const res  = await fetch('/api/attendance/checkin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lectureId: Number(lectureId) })
+        });
+
+        // 로그인 안 된 상태
+        if (res.status === 401) {
+          document.getElementById('nfcWrap').classList.add('error');
+          document.getElementById('nfcCore').textContent  = '🔒';
+          document.getElementById('nfcLabel').textContent = '로그인이 필요합니다';
+          document.getElementById('nfcSub').textContent   = '로그인을 먼저 하신 후, 다시 시도해 주세요.';
+          document.getElementById('btnCheckin').style.display = 'none';
+          return;
+        }
+
+        const data = await res.json();
+
+        if (data.success) {
+          checkedIn = true;
+          setSuccess(data.seat);
+        } else if (data.alreadyCheckedIn) {
+          setAlreadyDone();
+        } else {
+          showError(data.message || '출석에 실패했습니다.');
+          btn.disabled = false;
+          btn.innerHTML = '<span>📶</span> 다시 시도';
+        }
+      } catch (e) {
+        showError('서버에 연결할 수 없습니다.');
+        btn.disabled = false;
+        btn.innerHTML = '<span>📶</span> 다시 시도';
+      }
+    }
+
+    function setSuccess(seat) {
+      // NFC 애니메이션 → 초록
+      document.getElementById('nfcWrap').classList.add('success');
+      document.getElementById('nfcCore').textContent = '✅';
+      document.getElementById('nfcLabel').textContent = '출석 완료!';
+      document.getElementById('nfcSub').textContent   = '오늘 출석이 정상적으로 기록되었습니다.';
+
+      // 결과 메시지
+      const box = document.getElementById('resultBox');
+      box.className = 'result-box success show';
+      box.textContent = '✅ 출석이 완료되었습니다!';
+
+      // 자리 정보
+      if (seat) {
+        document.getElementById('seatNum').textContent  = `${seat.seatNum}번 자리`;
+        document.getElementById('seatTime').textContent = seat.attendedAt || '-';
+        document.getElementById('seatInfo').classList.add('show');
+      }
+
+      // 버튼 변경
+      const btn = document.getElementById('btnCheckin');
+      btn.disabled = true;
+      btn.style.background = 'linear-gradient(135deg,#065f46,var(--success))';
+      btn.innerHTML = '<span>✅</span> 출석 완료';
+    }
+
+    function setAlreadyDone() {
+      document.getElementById('nfcWrap').classList.add('success');
+      document.getElementById('nfcCore').textContent = '✅';
+      document.getElementById('nfcLabel').textContent = '이미 출석하셨습니다';
+      document.getElementById('nfcSub').textContent   = '오늘 출석은 이미 처리되어 있습니다.';
+
+      const box = document.getElementById('resultBox');
+      box.className = 'result-box success show';
+      box.textContent = '오늘 출석이 이미 완료된 상태입니다.';
+
+      const btn = document.getElementById('btnCheckin');
+      btn.disabled = true;
+      btn.style.background = 'linear-gradient(135deg,#065f46,var(--success))';
+      btn.innerHTML = '<span>✅</span> 출석 완료';
+    }
+
+    function showError(msg) {
+      document.getElementById('nfcWrap').classList.add('error');
+      const box = document.getElementById('resultBox');
+      box.className = 'result-box error show';
+      box.textContent = '⚠ ' + msg;
+      setTimeout(() => {
+        document.getElementById('nfcWrap').classList.remove('error');
+        box.classList.remove('show');
+      }, 3000);
+    }
+
+    function goBack() { window.location.href = 'student-lectures.html'; }
+
+    function logout() {
+      fetch('/api/logout', { method:'POST' }).catch(()=>{});
+      localStorage.removeItem('studentName');
+      sessionStorage.clear();
+      window.location.href = 'student.html';
+    }
+
+    init();
+  </script>
+</body>
+</html>

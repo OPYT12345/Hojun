@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 분석 - NFC 수업 시스템</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    :root{
+      --primary:#4f46e5;--primary-light:#6366f1;--primary-dark:#3730a3;
+      --success:#10b981;--danger:#ef4444;--warning:#f59e0b;
+      --bg:#0f0f1a;--surface:#1a1a2e;--surface2:#16213e;
+      --border:#2a2a4a;--text:#e2e8f0;--text-muted:#94a3b8;
+    }
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+
+    /* HEADER */
+    .dash-header{height:60px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0;}
+    .btn-back{background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:5px 12px;font-size:.8rem;cursor:pointer;transition:all .2s;}
+    .btn-back:hover{border-color:var(--primary-light);color:var(--primary-light);}
+    .logo-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#065f46,var(--success));display:flex;align-items:center;justify-content:center;font-size:15px;}
+    .header-title{font-size:.95rem;font-weight:700;}
+    .header-badge{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:4px 10px;font-size:.72rem;color:var(--success);font-weight:600;}
+    .spacer{flex:1;}
+    .user-chip{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--text-muted);}
+    .user-av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--primary-dark),var(--primary-light));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;}
+    .btn-logout{background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:5px 12px;font-size:.75rem;cursor:pointer;transition:all .2s;margin-left:4px;}
+    .btn-logout:hover{border-color:var(--danger);color:var(--danger);}
+
+    /* MAIN */
+    main{flex:1;padding:36px 32px;max-width:900px;width:100%;margin:0 auto;}
+
+    /* LECTURE INFO */
+    .lec-banner{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:14px;margin-bottom:28px;}
+    .lec-icon{width:44px;height:44px;border-radius:12px;background:rgba(79,70,229,.15);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+    .lec-name{font-size:1rem;font-weight:700;}
+    .lec-meta{font-size:.78rem;color:var(--text-muted);margin-top:2px;}
+
+    /* SECTION */
+    .section{margin-bottom:28px;}
+    .section-title{font-size:.7rem;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:14px;}
+
+    /* ANALYSIS CARDS */
+    .analysis-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:16px;}
+    .analysis-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+    .analysis-card-header{padding:16px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);}
+    .card-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+    .card-icon.green{background:rgba(16,185,129,.15);}
+    .card-icon.blue{background:rgba(79,70,229,.15);}
+    .card-icon.yellow{background:rgba(245,158,11,.15);}
+    .card-title{font-size:.9rem;font-weight:700;}
+    .card-desc{font-size:.75rem;color:var(--text-muted);margin-top:1px;}
+    .analysis-card-body{padding:16px 20px;}
+    .btn-analyze{width:100%;background:linear-gradient(135deg,var(--primary-dark),var(--primary-light));color:#fff;border:none;border-radius:10px;padding:11px;font-size:.86rem;font-weight:700;cursor:pointer;transition:opacity .2s;display:flex;align-items:center;justify-content:center;gap:6px;}
+    .btn-analyze:hover{opacity:.85;}
+    .btn-analyze:disabled{opacity:.45;cursor:not-allowed;}
+    .result-box{margin-top:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-size:.83rem;line-height:1.75;color:var(--text);white-space:pre-wrap;display:none;max-height:300px;overflow-y:auto;}
+    .result-box.show{display:block;}
+    .result-box::-webkit-scrollbar{width:3px;}
+    .result-box::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+    .thinking{color:var(--text-muted);display:flex;align-items:center;gap:8px;font-size:.82rem;}
+    .dot{width:6px;height:6px;border-radius:50%;background:var(--text-muted);animation:bounce .9s ease infinite;display:inline-block;}
+    .dot:nth-child(2){animation-delay:.15s;}
+    .dot:nth-child(3){animation-delay:.3s;}
+    @keyframes bounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-5px);}}
+
+    /* SUGGEST SECTION */
+    .suggest-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+    .suggest-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+    .suggest-body{padding:20px;}
+    .inp-label{font-size:.78rem;color:var(--text-muted);margin-bottom:8px;font-weight:600;}
+    .inp-question{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-size:.88rem;font-family:inherit;resize:vertical;min-height:80px;outline:none;transition:border-color .2s;}
+    .inp-question:focus{border-color:var(--success);}
+    .inp-question::placeholder{color:var(--text-muted);}
+    .btn-suggest{margin-top:12px;width:100%;background:linear-gradient(135deg,#065f46,var(--success));color:#fff;border:none;border-radius:10px;padding:11px;font-size:.86rem;font-weight:700;cursor:pointer;transition:opacity .2s;display:flex;align-items:center;justify-content:center;gap:6px;}
+    .btn-suggest:hover{opacity:.85;}
+    .btn-suggest:disabled{opacity:.45;cursor:not-allowed;}
+  </style>
+</head>
+<body>
+
+  <header class="dash-header">
+    <button class="btn-back" onclick="goBack()">← 강의 목록</button>
+    <div class="logo-icon">🤖</div>
+    <div class="header-title">AI 수업 분석</div>
+    <div class="header-badge">GPT-4o-mini</div>
+    <div class="spacer"></div>
+    <div class="user-chip">
+      <div class="user-av" id="avatarInitial">강</div>
+      <span style="color:var(--text);font-weight:600;" id="teacherName">강사</span>
+    </div>
+    <button class="btn-logout" onclick="logout()">로그아웃</button>
+  </header>
+
+  <main>
+
+    <!-- 강의 정보 -->
+    <div class="lec-banner">
+      <div class="lec-icon">📚</div>
+      <div>
+        <div class="lec-name" id="lecName">-</div>
+        <div class="lec-meta" id="lecMeta">-</div>
+      </div>
+    </div>
+
+    <!-- AI 분석 -->
+    <div class="section">
+      <div class="section-title">AI 분석</div>
+      <div class="analysis-grid">
+
+        <!-- 제출물 분석 -->
+        <div class="analysis-card">
+          <div class="analysis-card-header">
+            <div class="card-icon blue">📝</div>
+            <div>
+              <div class="card-title">제출물 분석</div>
+              <div class="card-desc">학생 제출물 기반 이해도 및 취약점 분석</div>
+            </div>
+          </div>
+          <div class="analysis-card-body">
+            <button class="btn-analyze" id="btn-sub" onclick="analyze('submissions', 'btn-sub', 'result-sub')">
+              🤖 AI 분석 시작
+            </button>
+            <div class="result-box" id="result-sub"></div>
+          </div>
+        </div>
+
+        <!-- 질문 분석 -->
+        <div class="analysis-card">
+          <div class="analysis-card-header">
+            <div class="card-icon green">❓</div>
+            <div>
+              <div class="card-title">질문 패턴 분석</div>
+              <div class="card-desc">자주 나오는 질문 유형 및 혼동 지점 분석</div>
+            </div>
+          </div>
+          <div class="analysis-card-body">
+            <button class="btn-analyze" id="btn-q" onclick="analyze('questions', 'btn-q', 'result-q')">
+              🤖 AI 분석 시작
+            </button>
+            <div class="result-box" id="result-q"></div>
+          </div>
+        </div>
+
+        <!-- 종합 분석 -->
+        <div class="analysis-card">
+          <div class="analysis-card-header">
+            <div class="card-icon yellow">📊</div>
+            <div>
+              <div class="card-title">종합 현황 분석</div>
+              <div class="card-desc">출석, 참여도, 학습 이해도 종합 리포트</div>
+            </div>
+          </div>
+          <div class="analysis-card-body">
+            <button class="btn-analyze" id="btn-overall" onclick="analyze('overall', 'btn-overall', 'result-overall')">
+              🤖 AI 분석 시작
+            </button>
+            <div class="result-box" id="result-overall"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- AI 답변 제안 -->
+    <div class="section">
+      <div class="section-title">AI 답변 제안</div>
+      <div class="suggest-card">
+        <div class="suggest-header">
+          <div class="card-icon green" style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;">💬</div>
+          <div>
+            <div class="card-title">학생 질문 답변 제안</div>
+            <div class="card-desc">학생의 질문을 입력하면 AI가 모범 답변을 제안합니다</div>
+          </div>
+        </div>
+        <div class="suggest-body">
+          <div class="inp-label">학생 질문 내용</div>
+          <textarea class="inp-question" id="studentQuestion" placeholder="예: 재귀함수와 반복문의 차이가 무엇인가요?"></textarea>
+          <button class="btn-suggest" id="btn-suggest" onclick="suggest()">
+            💡 AI 답변 제안 받기
+          </button>
+          <div class="result-box" id="result-suggest"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const lectureName = sessionStorage.getItem('lecName') || '';
+    const lectureId   = sessionStorage.getItem('lecId')   || null;
+
+    function init() {
+      const name = localStorage.getItem('teacherName') || '강사';
+      document.getElementById('teacherName').textContent   = name;
+      document.getElementById('avatarInitial').textContent = name.charAt(0);
+      document.getElementById('lecName').textContent = lectureName || '강의 미선택';
+      const code = sessionStorage.getItem('lecCode') || '';
+      const room = sessionStorage.getItem('lecRoom') || '';
+      document.getElementById('lecMeta').textContent = [code, room].filter(Boolean).join(' · ') || '-';
+    }
+
+    async function analyze(type, btnId, resultId) {
+      const btn    = document.getElementById(btnId);
+      const result = document.getElementById(resultId);
+      btn.disabled = true;
+      btn.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+      result.className = 'result-box show';
+      result.innerHTML = '<span class="thinking"><span class="dot"></span><span class="dot"></span><span class="dot"></span> AI가 분석 중입니다...</span>';
+
+      try {
+        const res = await fetch('/api/ai/instructor-analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lectureId: lectureId ? Number(lectureId) : null,
+            lectureName: lectureName,
+            analysisType: type
+          })
+        });
+        const data = await res.json();
+
+        if (res.status === 401) {
+          result.textContent = '로그인이 필요합니다.';
+          setTimeout(() => window.location.href = 'instructor.html', 1500);
+          return;
+        }
+        if (res.status === 403) {
+          result.textContent = '강사만 사용할 수 있습니다.';
+          return;
+        }
+
+        result.textContent = data.success ? data.message : ('오류: ' + (data.error || '분석 실패'));
+      } catch (e) {
+        result.textContent = '서버에 연결할 수 없습니다.';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '🤖 AI 분석 시작';
+      }
+    }
+
+    async function suggest() {
+      const question = document.getElementById('studentQuestion').value.trim();
+      if (!question) { alert('학생 질문을 입력해 주세요.'); return; }
+
+      const btn    = document.getElementById('btn-suggest');
+      const result = document.getElementById('result-suggest');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+      result.className = 'result-box show';
+      result.innerHTML = '<span class="thinking"><span class="dot"></span><span class="dot"></span><span class="dot"></span> AI가 답변을 생성 중입니다...</span>';
+
+      try {
+        const res = await fetch('/api/ai/instructor-suggest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lectureId: lectureId ? Number(lectureId) : null,
+            lectureName: lectureName,
+            question: question
+          })
+        });
+        const data = await res.json();
+
+        if (res.status === 401) {
+          result.textContent = '로그인이 필요합니다.';
+          setTimeout(() => window.location.href = 'instructor.html', 1500);
+          return;
+        }
+        if (res.status === 403) {
+          result.textContent = '강사만 사용할 수 있습니다.';
+          return;
+        }
+
+        result.textContent = data.success ? data.message : ('오류: ' + (data.error || '제안 실패'));
+      } catch (e) {
+        result.textContent = '서버에 연결할 수 없습니다.';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '💡 AI 답변 제안 받기';
+      }
+    }
+
+    function goBack() { window.location.href = 'teacher-lectures.html'; }
+
+    function logout() {
+      fetch('/api/logout', { method: 'POST' }).catch(() => {});
+      localStorage.removeItem('teacherName');
+      sessionStorage.clear();
+      window.location.href = 'instructor.html';
+    }
+
+    init();
+  </script>
+</body>
+</html>

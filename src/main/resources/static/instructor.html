@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>강사 - NFC 수업 시스템</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    :root{
+      --primary:#4f46e5;--primary-light:#6366f1;--primary-dark:#3730a3;
+      --cyan:#06b6d4;--cyan-dark:#0e7490;
+      --success:#10b981;--danger:#ef4444;--warning:#f59e0b;--purple:#8b5cf6;
+      --bg:#0f0f1a;--surface:#1a1a2e;--surface2:#16213e;--surface3:#1e2040;
+      --border:#2a2a4a;--text:#e2e8f0;--text-muted:#94a3b8;
+    }
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+
+    /* ── LOGIN ── */
+    #view-login{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 16px;}
+    .login-card{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:44px 40px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:22px;}
+    .login-logo{display:flex;flex-direction:column;align-items:center;gap:12px;}
+    .logo-icon-wrap{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--cyan-dark),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:26px;}
+    .login-title{font-size:1.5rem;font-weight:800;text-align:center;}
+    .login-sub{font-size:.84rem;color:var(--text-muted);text-align:center;margin-top:-10px;}
+    .form-group{display:flex;flex-direction:column;gap:6px;}
+    label{font-size:.78rem;color:var(--text-muted);font-weight:500;}
+    .inp{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-size:.9rem;outline:none;transition:border-color .2s;}
+    .inp:focus{border-color:var(--cyan);}
+    .inp::placeholder{color:var(--text-muted);}
+    .btn-login{width:100%;background:linear-gradient(135deg,var(--cyan-dark),var(--cyan));color:#fff;border:none;border-radius:12px;padding:13px;font-size:.95rem;font-weight:700;cursor:pointer;transition:opacity .2s;}
+    .btn-login:hover{opacity:.85;}
+    .divider{display:flex;align-items:center;gap:12px;}
+    .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+    .divider span{font-size:.75rem;color:var(--text-muted);}
+    .signup-row{display:flex;align-items:center;justify-content:center;gap:8px;font-size:.84rem;color:var(--text-muted);}
+    .signup-row a{color:var(--cyan);text-decoration:none;font-weight:600;}
+    .signup-row a:hover{text-decoration:underline;}
+
+    /* ── DASHBOARD LAYOUT ── */
+    #view-dashboard{flex:1;display:none;flex-direction:column;overflow:hidden;}
+    .dash-header{height:60px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0;}
+    .dash-logo{display:flex;align-items:center;gap:8px;font-size:1rem;font-weight:700;}
+    .dash-logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--cyan-dark),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:16px;}
+    .lec-badge{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:4px 12px;font-size:.78rem;color:var(--text-muted);margin-left:4px;}
+    .lec-badge.live{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.3);color:var(--success);}
+    .dash-spacer{flex:1;}
+    .user-chip{display:flex;align-items:center;gap:8px;font-size:.84rem;}
+    .user-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--cyan-dark),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;}
+    .btn-logout{background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:5px 12px;font-size:.78rem;cursor:pointer;transition:all .2s;}
+    .btn-logout:hover{border-color:var(--danger);color:var(--danger);}
+
+    .dash-body{flex:1;display:flex;overflow:hidden;}
+
+    /* ── SIDEBAR ── */
+    .sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px 12px;gap:4px;flex-shrink:0;overflow-y:auto;}
+    .sidebar-section{font-size:.68rem;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-muted);padding:12px 8px 6px;font-weight:600;}
+    .nav-item{width:100%;background:transparent;border:none;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;font-size:.88rem;font-weight:500;color:var(--text-muted);cursor:pointer;transition:all .2s;text-align:left;}
+    .nav-item:hover{background:var(--surface2);color:var(--text);}
+    .nav-item.active{background:rgba(6,182,212,.12);color:var(--cyan);font-weight:600;}
+    .nav-icon{font-size:16px;width:20px;text-align:center;}
+    .sidebar-bottom{margin-top:auto;padding-top:16px;border-top:1px solid var(--border);}
+
+    /* ── CONTENT ── */
+    .content{flex:1;overflow-y:auto;padding:28px;}
+    .content::-webkit-scrollbar{width:4px;}
+    .content::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+    .section{display:none;}
+    .section.active{display:block;}
+
+    .page-title{font-size:1.2rem;font-weight:700;margin-bottom:6px;}
+    .page-sub{font-size:.84rem;color:var(--text-muted);margin-bottom:24px;}
+
+    /* ── CARDS ── */
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px;}
+    .card-title{font-size:.9rem;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+
+    /* ── SETUP SECTION ── */
+    .setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+    .stat-mini{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+    .stat-mini .val{font-size:1.6rem;font-weight:800;line-height:1;}
+    .stat-mini .lbl{font-size:.76rem;color:var(--text-muted);margin-top:4px;}
+    .nfc-setup-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;display:flex;flex-direction:column;align-items:center;gap:20px;}
+    .nfc-wrap{position:relative;width:140px;height:140px;display:flex;align-items:center;justify-content:center;}
+    .ring{position:absolute;border-radius:50%;border:2px solid var(--cyan);opacity:0;animation:pulse-ring 2.4s ease-out infinite;}
+    .ring:nth-child(1){width:100%;height:100%;animation-delay:0s;}
+    .ring:nth-child(2){width:72%;height:72%;animation-delay:.7s;}
+    .ring:nth-child(3){width:47%;height:47%;animation-delay:1.4s;}
+    @keyframes pulse-ring{0%{opacity:.55;transform:scale(.85);}100%{opacity:0;transform:scale(1.1);}}
+    .nfc-core{width:84px;height:84px;background:linear-gradient(135deg,var(--cyan-dark),var(--cyan));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:34px;cursor:pointer;box-shadow:0 0 32px rgba(6,182,212,.4);z-index:1;position:relative;transition:transform .15s,box-shadow .15s;}
+    .nfc-core:hover{transform:scale(1.06);box-shadow:0 0 48px rgba(6,182,212,.55);}
+    .nfc-core:active{transform:scale(.94);}
+    .nfc-wrap.success .ring{border-color:var(--success);}
+    .nfc-wrap.success .nfc-core{background:linear-gradient(135deg,#065f46,var(--success));box-shadow:0 0 40px rgba(16,185,129,.5);}
+    .nfc-label{font-size:.94rem;font-weight:600;text-align:center;}
+    .nfc-sub{font-size:.78rem;color:var(--text-muted);text-align:center;}
+    .setup-form{width:100%;display:flex;flex-direction:column;gap:12px;}
+    .inp-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .active-lec-banner{background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.25);border-radius:14px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
+    .live-dot-wrap{display:flex;align-items:center;gap:6px;font-size:.78rem;font-weight:600;color:var(--success);}
+    .live-dot{width:7px;height:7px;background:var(--success);border-radius:50%;animation:blink 1.2s ease infinite;}
+    @keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+    .lec-info-text .name{font-weight:700;font-size:1rem;}
+    .lec-info-text .meta{font-size:.78rem;color:var(--text-muted);margin-top:3px;}
+    .btn-end{background:rgba(239,68,68,.12);color:var(--danger);border:1px solid rgba(239,68,68,.28);border-radius:10px;padding:7px 16px;font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;flex-shrink:0;}
+    .btn-end:hover{background:rgba(239,68,68,.22);}
+
+    /* ── MATERIALS ── */
+    .upload-area{border:2px dashed var(--border);border-radius:14px;padding:32px;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:20px;}
+    .upload-area:hover{border-color:var(--primary-light);}
+    .upload-icon{font-size:36px;margin-bottom:8px;}
+    .upload-text{font-size:.88rem;color:var(--text-muted);}
+    .upload-text strong{color:var(--primary-light);}
+    .material-list{display:flex;flex-direction:column;gap:10px;}
+    .material-item{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;}
+    .material-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+    .material-icon.pdf{background:rgba(239,68,68,.15);}
+    .material-icon.img{background:rgba(16,185,129,.15);}
+    .material-icon.link{background:rgba(6,182,212,.15);}
+    .material-icon.etc{background:rgba(139,92,246,.15);}
+    .material-info{flex:1;min-width:0;}
+    .material-title{font-size:.9rem;font-weight:600;}
+    .material-desc{font-size:.76rem;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .material-meta{font-size:.72rem;color:var(--text-muted);margin-top:3px;}
+    .type-badge{padding:2px 9px;border-radius:20px;font-size:.7rem;font-weight:600;flex-shrink:0;}
+    .type-badge.pdf{background:rgba(239,68,68,.12);color:var(--danger);}
+    .type-badge.img{background:rgba(16,185,129,.12);color:var(--success);}
+    .type-badge.link{background:rgba(6,182,212,.12);color:var(--cyan);}
+    .type-badge.etc{background:rgba(139,92,246,.12);color:var(--purple);}
+    .btn-del{background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:5px 10px;font-size:.75rem;cursor:pointer;transition:all .2s;flex-shrink:0;}
+    .btn-del:hover{border-color:var(--danger);color:var(--danger);}
+
+    /* Upload form panel */
+    .upload-form-panel{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px;display:none;flex-direction:column;gap:12px;}
+    .upload-form-panel.open{display:flex;}
+    .panel-title{font-size:.9rem;font-weight:600;margin-bottom:2px;}
+
+    /* ── ATTENDANCE ── */
+    .att-grid-layout{display:grid;grid-template-columns:1fr 320px;gap:16px;}
+    .seating-wrap{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;overflow-x:auto;}
+    .board-label-wrap{display:flex;justify-content:center;margin-bottom:12px;}
+    .board-label{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:5px 36px;font-size:.74rem;color:var(--text-muted);letter-spacing:2px;}
+    .instr-seat-banner{display:flex;justify-content:center;margin-bottom:12px;}
+    .instr-seat-chip{background:linear-gradient(135deg,var(--cyan-dark),var(--cyan));border-radius:10px;padding:8px 24px;font-size:.8rem;font-weight:700;}
+    .seat-rows{display:flex;flex-direction:column;gap:8px;}
+    .seat-row{display:flex;align-items:center;gap:8px;}
+    .row-label{width:20px;font-size:.76rem;color:var(--text-muted);font-weight:600;text-align:center;flex-shrink:0;}
+    .seat-group{display:flex;gap:7px;}
+    .aisle{width:20px;}
+    .seat{width:88px;height:64px;border-radius:10px;border:1px dashed var(--border);background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;transition:all .2s;font-size:0;}
+    .seat:hover{border-color:var(--primary-light);transform:scale(1.04);}
+    .seat.occ{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);}
+    .seat-id{font-size:.64rem;color:var(--text-muted);font-weight:600;}
+    .seat-name{font-size:.76rem;font-weight:700;color:var(--success);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .seat-time{font-size:.64rem;color:var(--text-muted);}
+    .seat-empty{font-size:.7rem;color:var(--border);}
+    .att-sidebar{background:var(--surface);border:1px solid var(--border);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;}
+    .att-sidebar-header{padding:14px 16px;border-bottom:1px solid var(--border);}
+    .att-sidebar-header h4{font-size:.9rem;font-weight:600;}
+    .att-item-list{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
+    .att-item-list::-webkit-scrollbar{width:3px;}
+    .att-item-list::-webkit-scrollbar-thumb{background:var(--border);}
+    .att-item{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;}
+    .att-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--primary-dark),var(--primary-light));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;}
+    .att-info{flex:1;min-width:0;}
+    .att-name{font-size:.84rem;font-weight:600;}
+    .att-id{font-size:.7rem;color:var(--text-muted);}
+    .att-badge{padding:2px 8px;border-radius:20px;font-size:.68rem;font-weight:600;flex-shrink:0;}
+    .att-badge.present{background:rgba(16,185,129,.15);color:var(--success);}
+    .att-badge.absent{background:rgba(239,68,68,.15);color:var(--danger);}
+
+    /* ── SHARED ── */
+    .btn-primary{background:var(--primary);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:.86rem;font-weight:600;cursor:pointer;transition:background .2s;}
+    .btn-primary:hover{background:var(--primary-light);}
+    .btn-cyan{background:linear-gradient(135deg,var(--cyan-dark),var(--cyan));color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:.86rem;font-weight:600;cursor:pointer;transition:opacity .2s;}
+    .btn-cyan:hover{opacity:.85;}
+    .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:8px 16px;font-size:.84rem;cursor:pointer;transition:all .2s;}
+    .btn-ghost:hover{border-color:var(--primary-light);color:var(--primary-light);}
+    select.inp{cursor:pointer;}
+    textarea.inp{resize:vertical;min-height:80px;font-family:inherit;}
+    .section-actions{display:flex;gap:10px;margin-bottom:20px;}
+    .empty-state{text-align:center;padding:48px 0;color:var(--text-muted);font-size:.88rem;}
+    .empty-icon{font-size:48px;margin-bottom:10px;}
+    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+    .toast-wrap{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:10px;z-index:999;}
+    .toast{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 18px;min-width:250px;display:flex;align-items:center;gap:10px;box-shadow:0 8px 28px rgba(0,0,0,.4);animation:toastIn .3s ease;}
+    @keyframes toastIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+    .toast.success{border-left:3px solid var(--success);}
+    .toast.error{border-left:3px solid var(--danger);}
+    .toast.info{border-left:3px solid var(--cyan);}
+    .toast-icon{font-size:18px;}
+    .toast-text strong{display:block;font-size:.86rem;}
+    .toast-text span{font-size:.76rem;color:var(--text-muted);}
+    .no-lec-notice{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:12px 16px;font-size:.84rem;color:var(--warning);margin-bottom:16px;display:none;}
+    .no-lec-notice.show{display:block;}
+  </style>
+</head>
+<body>
+
+<!-- ══════════ LOGIN ══════════ -->
+<div id="view-login">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon-wrap">👨‍🏫</div>
+      <div class="login-title">강사 로그인</div>
+      <div class="login-sub">강사 계정으로 로그인하세요</div>
+    </div>
+    <div class="form-group">
+      <label>이메일</label>
+      <input class="inp" type="email" id="inp-email" placeholder="이메일 입력" onkeydown="if(event.key==='Enter')handleLogin()" />
+    </div>
+    <div class="form-group">
+      <label>비밀번호</label>
+      <input class="inp" type="password" id="inp-pw" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')handleLogin()" />
+    </div>
+    <button class="btn-login" onclick="handleLogin()">로그인</button>
+    <div class="divider"><span>또는</span></div>
+    <div class="signup-row">계정이 없으신가요? <a href="signup.html">회원가입</a></div>
+    <div style="text-align:center;"><a href="index.html" style="font-size:.78rem;color:var(--text-muted);text-decoration:none;">← 메인으로</a></div>
+  </div>
+</div>
+
+<!-- ══════════ DASHBOARD ══════════ -->
+<div id="view-dashboard">
+  <header class="dash-header">
+    <div class="dash-logo"><div class="dash-logo-icon">👨‍🏫</div>강사 대시보드</div>
+    <div class="lec-badge" id="header-lec-badge">강의 없음</div>
+    <div class="dash-spacer"></div>
+    <div class="user-chip">
+      <div class="user-avatar" id="user-avatar-text">강</div>
+      <span id="user-name-text" style="font-size:.84rem;"></span>
+    </div>
+    <button class="btn-logout" onclick="logout()">로그아웃</button>
+  </header>
+
+  <div class="dash-body">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-section">강의 관리</div>
+      <button class="nav-item active" onclick="showSection('setup')"><span class="nav-icon">📡</span>강의 설정</button>
+      <button class="nav-item" onclick="showSection('materials')"><span class="nav-icon">📁</span>수업 자료</button>
+      <div class="sidebar-section">현황</div>
+      <button class="nav-item" onclick="showSection('attendance')"><span class="nav-icon">👥</span>출석 현황</button>
+    </aside>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- ── 강의 설정 ── -->
+      <div class="section active" id="section-setup">
+        <div class="page-title">강의 설정</div>
+        <div class="page-sub">강사 자리의 NFC를 태그하면 강의가 등록됩니다</div>
+
+        <div class="active-lec-banner" id="active-lec-banner" style="display:none;">
+          <div class="live-dot-wrap"><div class="live-dot"></div>LIVE</div>
+          <div class="lec-info-text">
+            <div class="name" id="banner-lec-name"></div>
+            <div class="meta" id="banner-lec-meta"></div>
+          </div>
+          <button class="btn-end" onclick="endLecture()">강의 종료</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:16px;" id="setup-grid-area">
+          <!-- NFC card -->
+          <div class="nfc-setup-card">
+            <div class="nfc-wrap" id="nfc-wrap">
+              <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+              <div class="nfc-core" onclick="triggerNFC()">📶</div>
+            </div>
+            <div class="nfc-label" id="nfc-label">강사 NFC 태그</div>
+            <div class="nfc-sub" id="nfc-sub">카드를 가까이 대면 강의가 시작됩니다</div>
+          </div>
+          <!-- Form -->
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div class="form-group">
+              <label>강의명</label>
+              <input class="inp" type="text" id="inp-lec-name" placeholder="강의명" />
+            </div>
+            <div class="form-group">
+              <label>강의실 코드 <span style="color:var(--text-muted);font-size:.72rem;">(같은 강의실 NFC 묶음)</span></label>
+              <input class="inp" type="text" id="inp-classroom" placeholder="예) A101" />
+            </div>
+            <div class="form-group">
+              <label>강사명</label>
+              <input class="inp" type="text" id="inp-instr-name" placeholder="강사명" />
+            </div>
+            <button class="btn-cyan" onclick="triggerNFC()">📶 NFC 태그로 강의 시작</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 수업 자료 ── -->
+      <div class="section" id="section-materials">
+        <div class="page-title">수업 자료</div>
+        <div class="page-sub">수강생이 열람할 자료를 업로드하세요</div>
+        <div class="no-lec-notice" id="mat-no-lec">⚠ 강의를 먼저 시작해야 자료를 등록할 수 있습니다</div>
+
+        <div class="section-actions">
+          <button class="btn-primary" onclick="toggleUploadForm()">+ 자료 업로드</button>
+        </div>
+
+        <div class="upload-form-panel" id="upload-form-panel">
+          <div class="panel-title">새 자료 등록</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="form-group">
+              <label>제목</label>
+              <input class="inp" type="text" id="mat-title" placeholder="자료 제목" />
+            </div>
+            <div class="form-group">
+              <label>유형</label>
+              <select class="inp" id="mat-type">
+                <option value="pdf">PDF</option>
+                <option value="img">이미지</option>
+                <option value="link">링크</option>
+                <option value="etc">기타</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>설명</label>
+            <input class="inp" type="text" id="mat-desc" placeholder="간단한 설명" />
+          </div>
+          <div class="form-group">
+            <label>파일 / URL</label>
+            <input class="inp" type="text" id="mat-url" placeholder="파일 선택 또는 URL 입력" />
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-primary" onclick="addMaterial()">등록</button>
+            <button class="btn-ghost" onclick="toggleUploadForm()">취소</button>
+          </div>
+        </div>
+
+        <div class="material-list" id="material-list">
+          <div class="empty-state"><div class="empty-icon">📂</div>등록된 자료가 없습니다</div>
+        </div>
+      </div>
+
+      <!-- ── 출석 현황 ── -->
+      <div class="section" id="section-attendance">
+        <div class="page-title">출석 현황</div>
+        <div class="page-sub">실시간 좌석 배치와 출석 현황을 확인합니다</div>
+        <div class="stats-row">
+          <div class="stat-mini"><div class="val" id="st-total">0</div><div class="lbl">전체 수강자</div></div>
+          <div class="stat-mini"><div class="val" style="color:var(--success)" id="st-present">0</div><div class="lbl">출석</div></div>
+          <div class="stat-mini"><div class="val" style="color:var(--danger)" id="st-absent">0</div><div class="lbl">미출석</div></div>
+          <div class="stat-mini"><div class="val" style="color:var(--warning)" id="st-rate">0%</div><div class="lbl">출석률</div></div>
+        </div>
+        <div class="att-grid-layout">
+          <div class="seating-wrap">
+            <div class="board-label-wrap"><div class="board-label">칠판</div></div>
+            <div class="instr-seat-banner"><div class="instr-seat-chip">📶 강사석</div></div>
+            <div class="seat-rows" id="seat-grid"></div>
+          </div>
+          <div class="att-sidebar">
+            <div class="att-sidebar-header"><h4>수강자 목록</h4></div>
+            <div class="att-item-list" id="att-item-list"></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /dash-body -->
+</div><!-- /view-dashboard -->
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<!-- Seat tooltip -->
+<div id="seat-tip" style="position:fixed;display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;min-width:180px;box-shadow:0 10px 32px rgba(0,0,0,.5);z-index:600;">
+  <div style="font-size:1.1rem;font-weight:800;margin-bottom:8px;" id="tip-seat"></div>
+  <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:4px;">이름: <span style="color:var(--text);font-weight:600;" id="tip-name"></span></div>
+  <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:4px;">학번: <span style="color:var(--text);" id="tip-id"></span></div>
+  <div style="font-size:.82rem;color:var(--text-muted);">입실: <span style="color:var(--text);" id="tip-time"></span></div>
+  <button onclick="document.getElementById('seat-tip').style.display='none'" style="margin-top:10px;width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:5px;font-size:.76rem;cursor:pointer;">닫기</button>
+</div>
+
+<script>
+  /* ──────── DB ──────── */
+  const DB = {
+    getLecture:     () => JSON.parse(localStorage.getItem('nfc_lecture')     || 'null'),
+    setLecture(l)      { localStorage.setItem('nfc_lecture',     JSON.stringify(l)); },
+    getMaterials:   () => JSON.parse(localStorage.getItem('nfc_materials')   || '[]'),
+    setMaterials(m)    { localStorage.setItem('nfc_materials',   JSON.stringify(m)); },
+    getSeats:       () => JSON.parse(localStorage.getItem('nfc_seats')       || '{}'),
+    getStudents:    () => JSON.parse(localStorage.getItem('nfc_students')    || '[]'),
+  };
+
+  const ROWS = ['A','B','C','D'];
+  const COLS = [1,2,3,4,5,6];
+  const ALL_SEATS = ROWS.flatMap(r => COLS.map(c => r+c));
+
+  let session = null; // { name, email }
+
+  /* ──────── LOGIN ──────── */
+  async function handleLogin() {
+    const username = document.getElementById('inp-email').value.trim();
+    const password = document.getElementById('inp-pw').value;
+    if (!username || !password) { toast('error', '입력 오류', '이메일과 비밀번호를 입력하세요'); return; }
+
+    const btn = document.querySelector('.btn-login');
+    btn.disabled = true; btn.textContent = '로그인 중…';
+
+    try {
+      const res  = await fetch('/api/teacher/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+
+      if (data.locked)   { toast('error', '계정 잠금',   data.message); return; }
+      if (!data.success) { toast('error', '로그인 실패', data.message); return; }
+
+      const prof = await (await fetch('/api/user/profile')).json();
+      localStorage.setItem('teacherName', prof.name);
+      window.location.href = 'teacher-lectures.html';
+    } catch (e) {
+      toast('error', '연결 오류', '서버에 연결할 수 없습니다');
+    } finally {
+      btn.disabled = false; btn.textContent = '로그인';
+    }
+  }
+
+  async function logout() {
+    await fetch('/api/logout', { method: 'POST' }).catch(() => {});
+    window.location.href = '/';
+  }
+
+  function enterDashboard() {
+    document.getElementById('view-login').style.display = 'none';
+    document.getElementById('view-dashboard').style.display = 'flex';
+    document.getElementById('user-name-text').textContent = session.name;
+    document.getElementById('user-avatar-text').textContent = session.name[0];
+    document.getElementById('inp-instr-name').value = session.name;
+    buildSeatGrid();
+    refreshAll();
+  }
+
+  /* ──────── NAV ──────── */
+  function showSection(name) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.getElementById('section-' + name).classList.add('active');
+    event.currentTarget.classList.add('active');
+    if (name === 'attendance') refreshAttendance();
+    if (name === 'materials') checkLecForSection('mat-no-lec');
+  }
+
+  function checkLecForSection(id) {
+    const lec = DB.getLecture();
+    document.getElementById(id).classList.toggle('show', !lec || !lec.active);
+  }
+
+  /* ──────── NFC / LECTURE ──────── */
+  let nfcBusy = false;
+
+  function triggerNFC() {
+    if (nfcBusy) return;
+    const lec = DB.getLecture();
+    if (lec && lec.active) { toast('info','이미 진행 중','강의를 종료하고 다시 시작하세요'); return; }
+
+    nfcBusy = true;
+    const wrap = document.getElementById('nfc-wrap');
+    const core = wrap.querySelector('.nfc-core');
+    const label = document.getElementById('nfc-label');
+    const sub   = document.getElementById('nfc-sub');
+
+    label.textContent = '카드 인식 중…';
+    core.textContent  = '⏳';
+
+    setTimeout(() => {
+      const name       = document.getElementById('inp-lec-name').value.trim()    || '이름 없는 강의';
+      const classroom  = document.getElementById('inp-classroom').value.trim()   || 'DEFAULT';
+      const instructor = document.getElementById('inp-instr-name').value.trim()  || session?.name || '강사';
+      const t = new Date();
+      const startTime = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+
+      DB.setLecture({ id: Date.now(), name, instructor, classroomCode: classroom, startTime, active: true });
+      DB.getMaterials(); // keep existing
+      localStorage.setItem('nfc_seats', '{}');
+
+      wrap.classList.add('success');
+      core.textContent  = '✅';
+      label.textContent = `강의 등록 완료`;
+      sub.textContent   = `${name} · ${classroom} · ${startTime}`;
+      toast('success','강의 시작',`${name} (${classroom})`);
+      refreshAll();
+
+      setTimeout(() => {
+        wrap.classList.remove('success');
+        core.textContent  = '📶';
+        label.textContent = '강사 NFC 태그';
+        sub.textContent   = '카드를 가까이 대면 강의가 시작됩니다';
+        nfcBusy = false;
+      }, 2200);
+    }, 900);
+  }
+
+  function endLecture() {
+    if (!confirm('강의를 종료하시겠습니까?')) return;
+    const lec = DB.getLecture();
+    if (lec) { lec.active = false; DB.setLecture(lec); }
+    refreshAll();
+    toast('info','강의 종료','강의가 종료되었습니다');
+  }
+
+  function refreshAll() {
+    const lec = DB.getLecture();
+    const isLive = lec && lec.active;
+    const badge = document.getElementById('header-lec-badge');
+    badge.textContent = isLive ? `📡 ${lec.name}` : '강의 없음';
+    badge.className = 'lec-badge' + (isLive ? ' live' : '');
+
+    const banner = document.getElementById('active-lec-banner');
+    banner.style.display = isLive ? 'flex' : 'none';
+    if (isLive) {
+      document.getElementById('banner-lec-name').textContent = lec.name;
+      document.getElementById('banner-lec-meta').textContent = `강의실 ${lec.classroomCode} · ${lec.startTime} 시작 · 강사: ${lec.instructor}`;
+    }
+  }
+
+  /* ──────── MATERIALS ──────── */
+  function toggleUploadForm() {
+    const p = document.getElementById('upload-form-panel');
+    p.classList.toggle('open');
+  }
+
+  const TYPE_ICONS = { pdf:'📄', img:'🖼', link:'🔗', etc:'📎' };
+  const TYPE_LABELS = { pdf:'PDF', img:'이미지', link:'링크', etc:'기타' };
+
+  function addMaterial() {
+    if (!DB.getLecture()?.active) { toast('error','강의 없음','강의를 먼저 시작하세요'); return; }
+    const title = document.getElementById('mat-title').value.trim();
+    if (!title) { toast('error','입력 오류','제목을 입력하세요'); return; }
+    const mat = {
+      id: Date.now(),
+      lectureId: DB.getLecture().id,
+      title,
+      type:  document.getElementById('mat-type').value,
+      desc:  document.getElementById('mat-desc').value.trim(),
+      url:   document.getElementById('mat-url').value.trim(),
+      createdAt: new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
+    };
+    const list = DB.getMaterials();
+    list.push(mat);
+    DB.setMaterials(list);
+    ['mat-title','mat-desc','mat-url'].forEach(id => document.getElementById(id).value = '');
+    toggleUploadForm();
+    renderMaterials();
+    toast('success','자료 등록','수업 자료가 등록되었습니다');
+  }
+
+  function deleteMaterial(id) {
+    DB.setMaterials(DB.getMaterials().filter(m => m.id !== id));
+    renderMaterials();
+    toast('info','삭제','자료가 삭제되었습니다');
+  }
+
+  function renderMaterials() {
+    const lec   = DB.getLecture();
+    const items = DB.getMaterials().filter(m => !lec || m.lectureId === lec.id);
+    const el    = document.getElementById('material-list');
+    if (!items.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">📂</div>등록된 자료가 없습니다</div>';
+      return;
+    }
+    el.innerHTML = items.map(m => `
+      <div class="material-item">
+        <div class="material-icon ${m.type}">${TYPE_ICONS[m.type]}</div>
+        <div class="material-info">
+          <div class="material-title">${m.title}</div>
+          <div class="material-desc">${m.desc || '—'}</div>
+          <div class="material-meta">${m.createdAt}${m.url ? ' · ' + m.url : ''}</div>
+        </div>
+        <div class="type-badge ${m.type}">${TYPE_LABELS[m.type]}</div>
+        <button class="btn-del" onclick="deleteMaterial(${m.id})">삭제</button>
+      </div>
+    `).join('');
+  }
+
+  /* ──────── ATTENDANCE ──────── */
+  function buildSeatGrid() {
+    const grid = document.getElementById('seat-grid');
+    grid.innerHTML = '';
+    ROWS.forEach(row => {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'seat-row';
+      rowEl.innerHTML = `<div class="row-label">${row}</div>`;
+      const lg = document.createElement('div'); lg.className = 'seat-group';
+      [1,2,3].forEach(c => lg.appendChild(makeSeat(row+c)));
+      const aisle = document.createElement('div'); aisle.className = 'aisle';
+      const rg = document.createElement('div'); rg.className = 'seat-group';
+      [4,5,6].forEach(c => rg.appendChild(makeSeat(row+c)));
+      rowEl.append(lg, aisle, rg);
+      grid.appendChild(rowEl);
+    });
+  }
+
+  function makeSeat(id) {
+    const el = document.createElement('div');
+    el.className = 'seat'; el.id = 'seat-'+id;
+    el.onclick = e => openSeatTip(id, e);
+    return el;
+  }
+
+  function refreshAttendance() {
+    const seats    = DB.getSeats();
+    const students = DB.getStudents();
+    const present  = Object.values(seats).filter(Boolean).length;
+    const total    = students.length;
+    document.getElementById('st-total').textContent   = total;
+    document.getElementById('st-present').textContent = present;
+    document.getElementById('st-absent').textContent  = total - present;
+    document.getElementById('st-rate').textContent    = total ? Math.round(present/total*100)+'%' : '0%';
+
+    ALL_SEATS.forEach(sid => {
+      const el = document.getElementById('seat-'+sid); if (!el) return;
+      const occ = seats[sid];
+      if (occ) {
+        el.className = 'seat occ';
+        el.innerHTML = `<div class="seat-id">${sid}</div><div class="seat-name">${occ.studentName}</div><div class="seat-time">${occ.time}</div>`;
+      } else {
+        el.className = 'seat';
+        el.innerHTML = `<div class="seat-id">${sid}</div><div class="seat-empty">빈 자리</div>`;
+      }
+    });
+
+    const list = document.getElementById('att-item-list');
+    if (!students.length) { list.innerHTML = '<div style="text-align:center;padding:24px 0;font-size:.84rem;color:var(--text-muted);">수강자 없음</div>'; return; }
+    list.innerHTML = students.map(s => {
+      const seat = Object.keys(seats).find(k => seats[k]?.studentId === s.id);
+      const present = !!seat;
+      return `<div class="att-item"><div class="att-avatar">${s.name[0]}</div><div class="att-info"><div class="att-name">${s.name}</div><div class="att-id">${s.id}${seat ? ' · '+seat : ''}</div></div><div class="att-badge ${present?'present':'absent'}">${present?'출석':'미출석'}</div></div>`;
+    }).join('');
+  }
+
+  function openSeatTip(seatId, e) {
+    const occ = DB.getSeats()[seatId];
+    document.getElementById('tip-seat').textContent = '좌석 ' + seatId;
+    document.getElementById('tip-name').textContent = occ ? occ.studentName : '빈 자리';
+    document.getElementById('tip-id').textContent   = occ ? occ.studentId   : '—';
+    document.getElementById('tip-time').textContent = occ ? occ.time         : '—';
+    const tip = document.getElementById('seat-tip');
+    tip.style.display = 'block';
+    tip.style.left = Math.min(e.clientX+10, window.innerWidth-200)+'px';
+    tip.style.top  = Math.min(e.clientY+10, window.innerHeight-160)+'px';
+    e.stopPropagation();
+  }
+  document.addEventListener('click', () => document.getElementById('seat-tip').style.display='none');
+
+  /* ──────── TOAST ──────── */
+  function toast(type, title, msg) {
+    const w = document.getElementById('toast-wrap');
+    const icon = type==='success'?'✅':type==='error'?'❌':'ℹ️';
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `<div class="toast-icon">${icon}</div><div class="toast-text"><strong>${title}</strong><span>${msg}</span></div>`;
+    w.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+
+  /* ──────── INIT ──────── */
+  renderMaterials();
+  setInterval(() => {
+    if (session && document.getElementById('view-dashboard').style.display !== 'none') {
+      refreshAll();
+      const active = document.querySelector('.section.active')?.id;
+      if (active === 'section-attendance') refreshAttendance();
+    }
+  }, 2500);
+</script>
+</body>
+</html>

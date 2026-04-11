@@ -1,0 +1,18 @@
+# Maven
+target/
+*.class
+
+# 업로드 파일 (로컬 파일, 배포 시 별도 처리)
+uploads/
+
+# 환경별 설정 (API 키 등 민감 정보 포함 금지)
+start.bat
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

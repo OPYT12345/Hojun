@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>강의 관리 - NFC 수업 시스템</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    :root{
+      --primary:#4f46e5;--primary-light:#6366f1;--primary-dark:#3730a3;
+      --success:#10b981;--danger:#ef4444;--warning:#f59e0b;
+      --cyan:#06b6d4;--cyan-dark:#0891b2;
+      --bg:#0f0f1a;--surface:#1a1a2e;--surface2:#16213e;
+      --border:#2a2a4a;--text:#e2e8f0;--text-muted:#94a3b8;
+    }
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+
+    .dash-header{height:60px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0;}
+    .btn-back{background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:5px 12px;font-size:.8rem;cursor:pointer;transition:all .2s;}
+    .btn-back:hover{border-color:var(--primary-light);color:var(--primary-light);}
+    .logo-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--cyan-dark),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:15px;}
+    .header-title{font-size:.95rem;font-weight:700;}
+    .spacer{flex:1;}
+    .user-chip{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--text-muted);}
+    .user-av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--cyan-dark),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;}
+    .btn-logout{background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:5px 12px;font-size:.75rem;cursor:pointer;transition:all .2s;margin-left:4px;}
+    .btn-logout:hover{border-color:var(--danger);color:var(--danger);}
+
+    main{flex:1;padding:32px;max-width:960px;width:100%;margin:0 auto;}
+
+    .tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:28px;}
+    .tab{flex:1;padding:9px;border:none;background:transparent;color:var(--text-muted);font-size:.86rem;font-weight:600;border-radius:9px;cursor:pointer;transition:all .2s;}
+    .tab.active{background:var(--surface2);color:var(--text);}
+    .tab-panel{display:none;}
+    .tab-panel.active{display:block;}
+
+    .section-title{font-size:.7rem;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:14px;}
+
+    /* FORM */
+    .form-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px;}
+    .form-row{margin-bottom:14px;}
+    .form-label{font-size:.78rem;color:var(--text-muted);font-weight:600;margin-bottom:6px;display:block;}
+    .form-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 14px;color:var(--text);font-size:.86rem;font-family:inherit;outline:none;transition:border-color .2s;}
+    .form-input:focus{border-color:var(--cyan);}
+    .form-input::placeholder{color:var(--text-muted);}
+    select.form-input{cursor:pointer;}
+    textarea.form-input{resize:vertical;min-height:80px;}
+    .form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;}
+    .btn-primary{background:linear-gradient(135deg,var(--cyan-dark),var(--cyan));color:#fff;border:none;border-radius:9px;padding:9px 20px;font-size:.86rem;font-weight:700;cursor:pointer;transition:opacity .2s;}
+    .btn-primary:hover{opacity:.85;}
+    .btn-danger-sm{background:transparent;border:1px solid rgba(239,68,68,.3);color:var(--danger);border-radius:7px;padding:5px 10px;font-size:.75rem;cursor:pointer;transition:all .2s;}
+    .btn-danger-sm:hover{background:rgba(239,68,68,.08);}
+
+    /* LIST */
+    .item-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px;}
+    .item-body{flex:1;}
+    .item-title{font-size:.9rem;font-weight:700;margin-bottom:3px;}
+    .item-meta{font-size:.75rem;color:var(--text-muted);}
+    .item-desc{font-size:.82rem;color:var(--text-muted);margin-top:6px;line-height:1.5;}
+    .mat-badge{display:inline-block;border-radius:6px;padding:2px 8px;font-size:.7rem;font-weight:700;margin-right:6px;}
+    .mat-badge.pdf{background:rgba(239,68,68,.15);color:var(--danger);}
+    .mat-badge.ppt{background:rgba(234,88,12,.15);color:#ea580c;}
+    .mat-badge.hwp{background:rgba(37,99,235,.15);color:#3b82f6;}
+    .mat-badge.link{background:rgba(79,70,229,.15);color:var(--primary-light);}
+    .mat-badge.video{background:rgba(245,158,11,.15);color:var(--warning);}
+    .mat-badge.etc{background:rgba(148,163,184,.1);color:var(--text-muted);}
+    .empty-state{text-align:center;padding:40px 20px;color:var(--text-muted);font-size:.88rem;}
+
+    /* ATTACH ROWS */
+    .attach-list{display:flex;flex-direction:column;gap:8px;margin-bottom:8px;}
+    .attach-row{display:flex;gap:8px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;}
+    .attach-row select{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 8px;color:var(--text);font-size:.78rem;cursor:pointer;}
+    .attach-row input[type="text"]{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;color:var(--text);font-size:.82rem;outline:none;}
+    .attach-row input[type="text"]:focus{border-color:var(--cyan);}
+    .attach-row input[type="text"]::placeholder{color:var(--text-muted);}
+    .attach-file-name{font-size:.78rem;color:var(--text-muted);max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .btn-attach-browse{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;color:var(--text-muted);font-size:.78rem;cursor:pointer;white-space:nowrap;transition:all .2s;}
+    .btn-attach-browse:hover{border-color:var(--cyan);color:var(--cyan);}
+    .btn-remove-row{background:transparent;border:none;color:var(--text-muted);font-size:1rem;cursor:pointer;padding:0 4px;line-height:1;transition:color .2s;}
+    .btn-remove-row:hover{color:var(--danger);}
+    .btn-add-attach{background:transparent;border:1px dashed var(--border);color:var(--text-muted);border-radius:8px;padding:8px;font-size:.8rem;cursor:pointer;width:100%;margin-top:4px;transition:all .2s;}
+    .btn-add-attach:hover{border-color:var(--cyan);color:var(--cyan);}
+    .date-input-wrap{display:flex;align-items:center;gap:6px;}
+    .date-input-wrap .form-input{flex:1;min-width:0;}
+    .cal-btn{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:9px 11px;color:var(--text-muted);font-size:1rem;cursor:pointer;transition:all .2s;flex-shrink:0;line-height:1;}
+    .cal-btn:hover{border-color:var(--cyan);color:var(--cyan);}
+
+    /* ASSIGNMENT LIST */
+    .asg-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px;}
+    .asg-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+    .asg-title{font-size:.95rem;font-weight:700;margin-bottom:4px;}
+    .asg-meta{font-size:.76rem;color:var(--text-muted);}
+    .asg-actions{display:flex;gap:6px;flex-shrink:0;}
+    .btn-edit-sm{background:transparent;border:1px solid rgba(6,182,212,.35);color:var(--cyan);border-radius:7px;padding:5px 10px;font-size:.75rem;cursor:pointer;transition:all .2s;}
+    .btn-edit-sm:hover{background:rgba(6,182,212,.1);}
+    .asg-subs-toggle{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:.8rem;color:var(--text-muted);cursor:pointer;user-select:none;}
+    .asg-subs-toggle:hover{color:var(--text);}
+    .sub-count-badge{background:rgba(6,182,212,.12);border:1px solid rgba(6,182,212,.25);border-radius:6px;padding:2px 8px;font-size:.75rem;color:var(--cyan);font-weight:700;}
+    .subs-panel{display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px;}
+    .subs-panel.open{display:block;}
+
+    /* FORM EDIT MODE */
+    .form-edit-banner{background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.25);border-radius:10px;padding:8px 14px;font-size:.82rem;color:var(--cyan);margin-bottom:12px;display:none;}
+    .form-edit-banner.show{display:block;}
+    .btn-secondary{background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:9px;padding:9px 16px;font-size:.86rem;cursor:pointer;transition:all .2s;}
+    .btn-secondary:hover{border-color:var(--text-muted);color:var(--text);}
+
+    /* Q&A */
+    .q-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;}
+    .q-content{font-size:.88rem;line-height:1.6;margin-bottom:6px;}
+    .q-meta{font-size:.74rem;color:var(--text-muted);margin-bottom:10px;}
+    .q-answered{padding:10px 12px;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:8px;font-size:.84rem;line-height:1.6;}
+    .q-answered-label{font-size:.7rem;color:var(--success);font-weight:700;margin-bottom:3px;}
+    .answer-form{margin-top:10px;display:flex;gap:8px;}
+    .answer-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:9px 12px;color:var(--text);font-size:.84rem;font-family:inherit;outline:none;resize:none;min-height:60px;transition:border-color .2s;}
+    .answer-input:focus{border-color:var(--success);}
+    .btn-answer{background:linear-gradient(135deg,#065f46,var(--success));color:#fff;border:none;border-radius:9px;padding:9px 16px;font-size:.82rem;font-weight:700;cursor:pointer;flex-shrink:0;transition:opacity .2s;}
+    .btn-answer:hover{opacity:.85;}
+
+    /* SUBMISSIONS */
+    .sub-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+    .sub-name{font-size:.88rem;font-weight:600;}
+    .sub-answer{font-size:.83rem;color:var(--text-muted);margin-top:2px;}
+    .sub-time{font-size:.74rem;color:var(--text-muted);}
+  </style>
+</head>
+<body>
+
+  <header class="dash-header">
+    <button class="btn-back" onclick="goBack()">← 강의 목록</button>
+    <div class="logo-icon">⚙️</div>
+    <div class="header-title" id="headerLecName">강의 관리</div>
+    <div class="spacer"></div>
+    <div class="user-chip">
+      <div class="user-av" id="avatarInitial">강</div>
+      <span style="color:var(--text);font-weight:600;" id="teacherName">강사</span>
+    </div>
+    <button class="btn-logout" onclick="logout()">로그아웃</button>
+  </header>
+
+  <main>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('materials',this)">📎 자료 관리</button>
+      <button class="tab" onclick="switchTab('assignments',this)">📋 과제 관리</button>
+      <button class="tab" onclick="switchTab('qa',this)">💬 Q&A</button>
+      <button class="tab" onclick="switchTab('settings',this)">⚙️ 강의 설정</button>
+    </div>
+
+    <!-- 자료 관리 -->
+    <div class="tab-panel active" id="tab-materials">
+      <div class="section-title">자료 등록</div>
+      <div class="form-card">
+        <div class="form-row">
+          <label class="form-label">제목</label>
+          <input class="form-input" id="mat-title" placeholder="예: 1주차 강의 슬라이드" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">유형</label>
+          <select class="form-input" id="mat-type" onchange="toggleMatInput()">
+            <option value="link">링크</option>
+            <option value="pdf">PDF</option>
+            <option value="ppt">PPT</option>
+            <option value="hwp">한글(HWP)</option>
+            <option value="video">영상</option>
+            <option value="etc">기타</option>
+          </select>
+        </div>
+        <!-- 링크 입력 (link/etc) -->
+        <div class="form-row" id="url-row">
+          <label class="form-label">URL</label>
+          <input class="form-input" id="mat-url" placeholder="https://..." />
+        </div>
+        <!-- 파일 선택 (pdf/video) -->
+        <div class="form-row" id="file-row" style="display:none;">
+          <label class="form-label" id="file-label">파일 선택</label>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <input type="file" id="mat-file" style="display:none;" />
+            <button type="button" class="btn-primary" style="padding:8px 16px;font-size:.82rem;" onclick="document.getElementById('mat-file').click()">📂 탐색</button>
+            <span id="file-name" style="font-size:.82rem;color:var(--text-muted);">선택된 파일 없음</span>
+          </div>
+          <div id="upload-progress" style="display:none;margin-top:8px;font-size:.78rem;color:var(--text-muted);">업로드 중...</div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">설명 (선택)</label>
+          <input class="form-input" id="mat-desc" placeholder="자료에 대한 간단한 설명" />
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" id="btn-add-mat" onclick="addMaterial()">+ 자료 등록</button>
+        </div>
+      </div>
+      <div class="section-title">등록된 자료</div>
+      <div id="materialList"><div class="empty-state">불러오는 중...</div></div>
+    </div>
+
+    <!-- 과제 관리 -->
+    <div class="tab-panel" id="tab-assignments">
+      <div class="form-edit-banner" id="editBanner">✏️ 과제 수정 중 — 수정 완료 후 반영됩니다.</div>
+      <div class="section-title" id="asgFormTitle">과제 등록</div>
+      <div class="form-card">
+        <div class="form-row">
+          <label class="form-label">제목</label>
+          <input class="form-input" id="asg-title" placeholder="예: 1주차 과제" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">과제 내용</label>
+          <textarea class="form-input" id="asg-content" placeholder="과제 내용, 요구사항, 주의사항 등을 입력하세요..." style="min-height:100px;"></textarea>
+        </div>
+        <div class="form-row">
+          <label class="form-label">강사 첨부자료 (선택)</label>
+          <div class="attach-list" id="asg-attach-list"></div>
+          <button class="btn-add-attach" onclick="addAttachRow('asg-attach-list')">+ 파일 또는 링크 추가</button>
+        </div>
+        <div class="form-row">
+          <label class="form-label">제출 기간</label>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center;">
+            <span style="font-size:.8rem;color:var(--text-muted);white-space:nowrap;">시작</span>
+            <div class="date-input-wrap">
+              <input class="form-input" type="datetime-local" id="asg-due-start" />
+              <button type="button" class="cal-btn" onclick="document.getElementById('asg-due-start').showPicker()" title="달력 열기">📅</button>
+            </div>
+            <span style="font-size:.8rem;color:var(--text-muted);white-space:nowrap;">마감</span>
+            <div class="date-input-wrap">
+              <input class="form-input" type="datetime-local" id="asg-due-end" />
+              <button type="button" class="cal-btn" onclick="document.getElementById('asg-due-end').showPicker()" title="달력 열기">📅</button>
+            </div>
+          </div>
+          <div style="font-size:.74rem;color:var(--text-muted);margin-top:5px;">비워두면 기간 제한 없음 (언제든 제출 가능)</div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-secondary" id="btn-cancel-edit" style="display:none;" onclick="cancelEdit()">취소</button>
+          <button class="btn-primary" id="btn-asg-submit" onclick="submitAssignment()">+ 과제 등록</button>
+        </div>
+      </div>
+      <div class="section-title">등록된 과제 및 제출 현황</div>
+      <div id="assignmentList"><div class="empty-state">불러오는 중...</div></div>
+    </div>
+
+    <!-- Q&A -->
+    <div class="tab-panel" id="tab-qa">
+      <div class="section-title">학생 질문 목록</div>
+      <div id="qaList"><div class="empty-state">불러오는 중...</div></div>
+    </div>
+
+    <!-- 강의 설정 -->
+    <div class="tab-panel" id="tab-settings">
+      <div class="section-title">강의 기간 설정</div>
+      <div class="form-card">
+        <div class="form-row">
+          <label class="form-label">시작일</label>
+          <div class="date-input-wrap">
+            <input class="form-input" type="date" id="lec-start" />
+            <button type="button" class="cal-btn" onclick="document.getElementById('lec-start').showPicker()" title="달력 열기">📅</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">종료일</label>
+          <div class="date-input-wrap">
+            <input class="form-input" type="date" id="lec-end" />
+            <button type="button" class="cal-btn" onclick="document.getElementById('lec-end').showPicker()" title="달력 열기">📅</button>
+          </div>
+        </div>
+        <div style="font-size:.74rem;color:var(--text-muted);margin-bottom:14px;">비워두면 기간 미설정 상태로 표시됩니다.</div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="savePeriod()">저장</button>
+        </div>
+        <div id="period-result" style="margin-top:10px;font-size:.83rem;"></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const lectureId   = sessionStorage.getItem('lecId');
+    const lectureName = sessionStorage.getItem('lecName') || '강의';
+
+    function init() {
+      if (!lectureId) { window.location.href = 'teacher-lectures.html'; return; }
+      const name = localStorage.getItem('teacherName') || '강사';
+      document.getElementById('teacherName').textContent   = name;
+      document.getElementById('avatarInitial').textContent = name.charAt(0);
+      document.getElementById('headerLecName').textContent = lectureName + ' — 관리';
+      loadMaterials();
+      loadAssignments();
+      loadQA();
+      // 과제 탭 활성 시 15초마다 제출 현황 갱신
+      setInterval(() => {
+        const asgTab = document.getElementById('tab-assignments');
+        if (asgTab && asgTab.classList.contains('active')) loadAssignments(true);
+      }, 15000);
+    }
+
+    function switchTab(name, btn) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + name).classList.add('active');
+      if (name === 'settings') loadPeriod();
+    }
+
+    /* ── 강의 기간 로드 ── */
+    async function loadPeriod() {
+      const res = await fetch('/api/teacher/lectures').catch(() => null);
+      if (!res || !res.ok) return;
+      const list = await res.json();
+      const lec  = list.find(l => String(l.id) === String(lectureId));
+      if (!lec) return;
+      document.getElementById('lec-start').value = lec.lectureStart || '';
+      document.getElementById('lec-end').value   = lec.lectureEnd   || '';
+    }
+
+    /* ── 강의 기간 저장 ── */
+    async function savePeriod() {
+      const start = document.getElementById('lec-start').value;
+      const end   = document.getElementById('lec-end').value;
+      const res = await fetch(`/api/teacher/lectures/${lectureId}/period`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lectureStart: start, lectureEnd: end })
+      }).catch(() => null);
+      const el = document.getElementById('period-result');
+      if (!res || !res.ok) { el.innerHTML = '<span style="color:var(--danger);">저장 실패</span>'; return; }
+      const data = await res.json();
+      el.innerHTML = data.success
+        ? '<span style="color:var(--success);">✓ 저장되었습니다.</span>'
+        : '<span style="color:var(--danger);">저장 실패</span>';
+    }
+
+    /* ── 자료 유형 토글 ── */
+    function toggleMatInput() {
+      const type = document.getElementById('mat-type').value;
+      const isFile = ['pdf','ppt','hwp','video'].includes(type);
+      document.getElementById('url-row').style.display  = isFile ? 'none' : 'block';
+      document.getElementById('file-row').style.display = isFile ? 'block' : 'none';
+      if (isFile) {
+        const acceptMap = {
+          pdf:   '.pdf',
+          ppt:   '.ppt,.pptx',
+          hwp:   '.hwp,.hwpx',
+          video: '.mp4,.mov,.avi,.mkv,.webm'
+        };
+        const labelMap = {
+          pdf: 'PDF 파일 선택', ppt: 'PPT 파일 선택',
+          hwp: '한글 파일 선택', video: '영상 파일 선택'
+        };
+        document.getElementById('mat-file').setAttribute('accept', acceptMap[type]);
+        document.getElementById('file-label').textContent = labelMap[type];
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('mat-file').addEventListener('change', function() {
+        const name = this.files[0] ? this.files[0].name : '선택된 파일 없음';
+        document.getElementById('file-name').textContent = name;
+      });
+    });
+
+    /* ── 자료 ── */
+    async function loadMaterials() {
+      const res  = await fetch(`/api/lecture/${lectureId}/materials`).catch(() => null);
+      const list = document.getElementById('materialList');
+      if (!res || !res.ok) { list.innerHTML = '<div class="empty-state">자료를 불러올 수 없습니다.</div>'; return; }
+      const data = await res.json();
+      if (!data.length) { list.innerHTML = '<div class="empty-state">등록된 자료가 없습니다.</div>'; return; }
+      list.innerHTML = data.map(m => `
+        <div class="item-card">
+          <div class="item-body">
+            <div><span class="mat-badge ${m.type||'etc'}">${typeLabel(m.type)}</span><span class="item-title">${esc(m.title)}</span></div>
+            ${m.url ? `<div class="item-meta" style="margin-top:4px;">${esc(m.url)}</div>` : ''}
+            ${m.description ? `<div class="item-desc">${esc(m.description)}</div>` : ''}
+          </div>
+          <button class="btn-danger-sm" onclick="deleteMaterial(${m.id})">삭제</button>
+        </div>`).join('');
+    }
+
+    function typeLabel(t) {
+      return {pdf:'PDF',ppt:'PPT',hwp:'한글',link:'링크',video:'영상',etc:'기타'}[t] || '기타';
+    }
+
+    async function addMaterial() {
+      const title = document.getElementById('mat-title').value.trim();
+      if (!title) { alert('제목을 입력하세요.'); return; }
+      const type  = document.getElementById('mat-type').value;
+      const isFile = ['pdf','ppt','hwp','video'].includes(type);
+      const btn   = document.getElementById('btn-add-mat');
+      btn.disabled = true;
+
+      let url = '';
+
+      if (isFile) {
+        const fileInput = document.getElementById('mat-file');
+        if (!fileInput.files[0]) { alert('파일을 선택하세요.'); btn.disabled = false; return; }
+        document.getElementById('upload-progress').style.display = 'block';
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        const uploadRes = await fetch('/api/files/upload', { method:'POST', body: formData }).catch(() => null);
+        document.getElementById('upload-progress').style.display = 'none';
+
+        if (!uploadRes || !uploadRes.ok) {
+          const err = uploadRes ? await uploadRes.json().catch(() => ({})) : {};
+          alert(err.message || '파일 업로드에 실패했습니다.');
+          btn.disabled = false;
+          return;
+        }
+        const uploadData = await uploadRes.json();
+        url = uploadData.url;
+      } else {
+        url = document.getElementById('mat-url').value.trim();
+      }
+
+      const body = { title, type, url, description: document.getElementById('mat-desc').value.trim() };
+      const res = await fetch(`/api/lecture/${lectureId}/materials`, {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+      }).catch(() => null);
+
+      btn.disabled = false;
+      if (res && res.ok) {
+        document.getElementById('mat-title').value = '';
+        document.getElementById('mat-url').value   = '';
+        document.getElementById('mat-desc').value  = '';
+        document.getElementById('mat-file').value  = '';
+        document.getElementById('file-name').textContent = '선택된 파일 없음';
+        loadMaterials();
+      } else { alert('자료 등록에 실패했습니다.'); }
+    }
+
+    async function deleteMaterial(id) {
+      if (!confirm('자료를 삭제하시겠습니까?')) return;
+      const res = await fetch(`/api/lecture/${lectureId}/materials/${id}`, { method:'DELETE' }).catch(() => null);
+      if (res && res.ok) loadMaterials();
+    }
+
+    /* ── 과제 ── */
+    let editingAsgId = null;   // 수정 중인 과제 ID (null이면 신규 등록 모드)
+    let asgAttachItems = [];   // 강사 첨부자료 목록 [{type, url, name}]
+
+    /* 첨부자료 행 추가 */
+    function addAttachRow(listId) {
+      const list = document.getElementById(listId);
+      const idx  = list.children.length;
+      const row  = document.createElement('div');
+      row.className = 'attach-row';
+      row.dataset.idx = idx;
+      row.innerHTML = `
+        <select onchange="toggleAttachRowMode(this)">
+          <option value="pdf">PDF</option>
+          <option value="ppt">PPT</option>
+          <option value="hwp">한글</option>
+          <option value="link">링크</option>
+        </select>
+        <div class="file-part" style="display:flex;align-items:center;gap:6px;">
+          <input type="file" accept=".pdf" style="display:none;" onchange="uploadAttachFile(this)">
+          <button type="button" class="btn-attach-browse" onclick="this.previousElementSibling.click()">📂 탐색</button>
+          <span class="attach-file-name">선택된 파일 없음</span>
+          <input type="hidden" class="attach-url" value="">
+        </div>
+        <div class="link-part" style="display:none;flex:1;">
+          <input type="text" placeholder="https://..." class="attach-url-text" />
+        </div>
+        <input type="text" placeholder="이름 (선택)" class="attach-name" style="width:120px;" />
+        <button type="button" class="btn-remove-row" onclick="this.parentElement.remove()">✕</button>`;
+      list.appendChild(row);
+    }
+
+    function toggleAttachRowMode(sel) {
+      const row      = sel.parentElement;
+      const filePart = row.querySelector('.file-part');
+      const linkPart = row.querySelector('.link-part');
+      const fileInput = filePart.querySelector('input[type="file"]');
+      const isLink   = sel.value === 'link';
+      filePart.style.display = isLink ? 'none' : 'flex';
+      linkPart.style.display = isLink ? 'flex' : 'none';
+      const acceptMap = { pdf:'.pdf', ppt:'.ppt,.pptx', hwp:'.hwp,.hwpx' };
+      fileInput.setAttribute('accept', acceptMap[sel.value] || '.pdf');
+    }
+
+    async function uploadAttachFile(input) {
+      const file     = input.files[0];
+      if (!file) return;
+      const row      = input.closest('.attach-row');
+      const nameSpan = row.querySelector('.attach-file-name');
+      const urlHidden = row.querySelector('.attach-url');
+      nameSpan.textContent = '업로드 중...';
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/files/upload', { method:'POST', body: formData }).catch(() => null);
+      if (!res || !res.ok) { nameSpan.textContent = '업로드 실패'; return; }
+      const data = await res.json();
+      urlHidden.value       = data.url;
+      nameSpan.textContent  = file.name;
+      // 이름 입력란 자동 채우기
+      const nameInput = row.querySelector('.attach-name');
+      if (!nameInput.value) nameInput.value = file.name.replace(/\.[^.]+$/, '');
+    }
+
+    function collectAttachRows(listId) {
+      const rows = document.querySelectorAll(`#${listId} .attach-row`);
+      const items = [];
+      rows.forEach(row => {
+        const type   = row.querySelector('select').value;
+        const name   = row.querySelector('.attach-name').value.trim();
+        let url = '';
+        if (type === 'link') {
+          url = row.querySelector('.attach-url-text')?.value.trim() || '';
+        } else {
+          url = row.querySelector('.attach-url')?.value.trim() || '';
+        }
+        if (url) items.push({ type, url, name: name || url });
+      });
+      return items;
+    }
+
+    function renderAttachList(listId, attachments) {
+      const list = document.getElementById(listId);
+      list.innerHTML = '';
+      (attachments || []).forEach(att => {
+        const row = document.createElement('div');
+        row.className = 'attach-row';
+        const isLink = att.type === 'link';
+        row.innerHTML = `
+          <select onchange="toggleAttachRowMode(this)">
+            <option value="pdf" ${att.type==='pdf'?'selected':''}>PDF</option>
+            <option value="ppt" ${att.type==='ppt'?'selected':''}>PPT</option>
+            <option value="hwp" ${att.type==='hwp'?'selected':''}>한글</option>
+            <option value="link" ${att.type==='link'?'selected':''}>링크</option>
+          </select>
+          <div class="file-part" style="display:${isLink?'none':'flex'};align-items:center;gap:6px;">
+            <input type="file" style="display:none;" onchange="uploadAttachFile(this)">
+            <button type="button" class="btn-attach-browse" onclick="this.previousElementSibling.click()">📂 탐색</button>
+            <span class="attach-file-name">${esc(att.name||att.url)}</span>
+            <input type="hidden" class="attach-url" value="${esc(att.url)}">
+          </div>
+          <div class="link-part" style="display:${isLink?'flex':'none'};flex:1;">
+            <input type="text" placeholder="https://..." class="attach-url-text" value="${esc(att.url)}" />
+          </div>
+          <input type="text" placeholder="이름 (선택)" class="attach-name" style="width:120px;" value="${esc(att.name||'')}" />
+          <button type="button" class="btn-remove-row" onclick="this.parentElement.remove()">✕</button>`;
+        list.appendChild(row);
+      });
+    }
+
+    async function loadAssignments(silentRefresh = false) {
+      const res  = await fetch(`/api/lecture/${lectureId}/assignments`).catch(() => null);
+      const list = document.getElementById('assignmentList');
+      if (!res || !res.ok) { if (!silentRefresh) list.innerHTML = '<div class="empty-state">과제를 불러올 수 없습니다.</div>'; return; }
+      const data = await res.json();
+      if (!data.length) { list.innerHTML = '<div class="empty-state">등록된 과제가 없습니다.</div>'; return; }
+
+      // 기존 열린 패널 상태 보존
+      const openPanels = new Set();
+      document.querySelectorAll('.subs-panel.open').forEach(el => openPanels.add(el.id));
+
+      list.innerHTML = data.map(a => {
+        const dueStr = fmtDueRange(a.dueStart, a.dueEnd);
+        return `
+        <div class="asg-card" id="asg-card-${a.id}">
+          <div class="asg-card-top">
+            <div style="flex:1;min-width:0;">
+              <div class="asg-title">${esc(a.title)}</div>
+              <div class="asg-meta">${dueStr} · 등록: ${a.createdAt || ''}</div>
+              ${a.content ? `<div class="item-desc" style="margin-top:6px;">${esc(a.content)}</div>` : ''}
+              ${renderAttachBadges(a.attachments)}
+            </div>
+            <div class="asg-actions">
+              <button class="btn-edit-sm" onclick="startEditAssignment(${a.id})">수정</button>
+              <button class="btn-danger-sm" onclick="deleteAssignment(${a.id})">삭제</button>
+            </div>
+          </div>
+          <div class="asg-subs-toggle" onclick="toggleSubs(${a.id})">
+            <span id="sub-count-${a.id}" class="sub-count-badge">제출 확인 중...</span>
+            <span>▾ 제출 현황</span>
+          </div>
+          <div class="subs-panel ${openPanels.has('subs-panel-'+a.id)?'open':''}" id="subs-panel-${a.id}">
+            <div id="subs-${a.id}"><div style="font-size:.8rem;color:var(--text-muted);">불러오는 중...</div></div>
+          </div>
+        </div>`;
+      }).join('');
+
+      // 제출 현황 로드 (이전에 열려 있던 패널 포함)
+      data.forEach(a => {
+        loadSubs(a.id, openPanels.has('subs-panel-'+a.id));
+      });
+    }
+
+    function renderAttachBadges(attachments) {
+      if (!attachments || !attachments.length) return '';
+      const badges = attachments.map(att => {
+        const label = {pdf:'PDF',ppt:'PPT',hwp:'한글',link:'링크'}[att.type] || att.type;
+        const cls   = att.type || 'etc';
+        const url   = att.url || '#';
+        return `<a href="${esc(url)}" target="_blank" rel="noopener" class="mat-badge ${cls}" style="text-decoration:none;">${label} ↗</a>`;
+      }).join('');
+      return `<div style="margin-top:6px;">${badges}</div>`;
+    }
+
+    async function loadSubs(asgId, forceOpen = false) {
+      const countEl = document.getElementById(`sub-count-${asgId}`);
+      const subsEl  = document.getElementById(`subs-${asgId}`);
+      const res     = await fetch(`/api/lecture/${lectureId}/submissions?assignmentId=${asgId}`).catch(() => null);
+      if (!res || !res.ok) {
+        if (countEl) countEl.textContent = '오류';
+        return;
+      }
+      const data = await res.json();
+      if (countEl) countEl.textContent = `제출 ${data.length}명`;
+
+      if (!data.length) {
+        subsEl.innerHTML = '<div style="font-size:.8rem;color:var(--text-muted);padding:8px 0;">아직 제출이 없습니다.</div>';
+        return;
+      }
+      subsEl.innerHTML = data.map(s => {
+        const displayName = `${esc(s.studentName || '학생')} (${esc(s.studentEmail || '')})`;
+        const isEdited    = s.updatedAt && s.submittedAt && s.updatedAt !== s.submittedAt;
+        const itemsHtml   = (s.items || []).map(it => {
+          const label = {pdf:'PDF',ppt:'PPT',hwp:'한글',link:'링크'}[it.type] || it.type;
+          return `<a href="${esc(it.url)}" target="_blank" rel="noopener" class="mat-badge ${esc(it.type||'etc')}" style="text-decoration:none;margin-right:4px;">${label}: ${esc(it.name||it.url)}</a>`;
+        }).join('');
+        return `
+        <div class="sub-card" style="flex-direction:column;align-items:flex-start;gap:6px;">
+          <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+            <div class="sub-name">${displayName}</div>
+            <div class="sub-time">${s.submittedAt || ''}${isEdited ? ` <span style="color:var(--cyan);font-size:.7rem;">수정됨 ${s.updatedAt}</span>` : ''}</div>
+          </div>
+          ${s.textContent ? `<div class="sub-answer" style="white-space:pre-wrap;line-height:1.5;">${esc(s.textContent)}</div>` : ''}
+          ${itemsHtml ? `<div>${itemsHtml}</div>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    function toggleSubs(asgId) {
+      const panel = document.getElementById(`subs-panel-${asgId}`);
+      panel.classList.toggle('open');
+    }
+
+    async function submitAssignment() {
+      const title   = document.getElementById('asg-title').value.trim();
+      const content = document.getElementById('asg-content').value.trim();
+      if (!title) { alert('제목을 입력하세요.'); return; }
+
+      const attachments = collectAttachRows('asg-attach-list');
+      const dueStart    = document.getElementById('asg-due-start').value || null;
+      const dueEnd      = document.getElementById('asg-due-end').value || null;
+      const body        = { title, content, attachments, dueStart, dueEnd };
+
+      const btn = document.getElementById('btn-asg-submit');
+      btn.disabled = true;
+
+      let res;
+      if (editingAsgId) {
+        res = await fetch(`/api/lecture/${lectureId}/assignments/${editingAsgId}`, {
+          method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+        }).catch(() => null);
+      } else {
+        res = await fetch(`/api/lecture/${lectureId}/assignments`, {
+          method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+        }).catch(() => null);
+      }
+
+      btn.disabled = false;
+      if (res && res.ok) {
+        resetAsgForm();
+        loadAssignments();
+      } else {
+        alert(editingAsgId ? '과제 수정에 실패했습니다.' : '과제 등록에 실패했습니다.');
+      }
+    }
+
+    async function startEditAssignment(asgId) {
+      const res  = await fetch(`/api/lecture/${lectureId}/assignments`).catch(() => null);
+      if (!res || !res.ok) return;
+      const data = await res.json();
+      const asg  = data.find(a => a.id === asgId);
+      if (!asg) return;
+
+      editingAsgId = asgId;
+      document.getElementById('asg-title').value    = asg.title || '';
+      document.getElementById('asg-content').value  = asg.content || '';
+      document.getElementById('asg-due-start').value = asg.dueStart || '';
+      document.getElementById('asg-due-end').value   = asg.dueEnd || '';
+      renderAttachList('asg-attach-list', asg.attachments || []);
+
+      document.getElementById('editBanner').classList.add('show');
+      document.getElementById('asgFormTitle').textContent = '과제 수정';
+      document.getElementById('btn-asg-submit').textContent = '수정 완료';
+      document.getElementById('btn-cancel-edit').style.display = 'inline-flex';
+      document.getElementById('tab-assignments').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelEdit() {
+      editingAsgId = null;
+      resetAsgForm();
+    }
+
+    function resetAsgForm() {
+      editingAsgId = null;
+      ['asg-title','asg-content','asg-due-start','asg-due-end'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+      document.getElementById('asg-attach-list').innerHTML = '';
+      document.getElementById('editBanner').classList.remove('show');
+      document.getElementById('asgFormTitle').textContent = '과제 등록';
+      document.getElementById('btn-asg-submit').textContent = '+ 과제 등록';
+      document.getElementById('btn-cancel-edit').style.display = 'none';
+    }
+
+    async function deleteAssignment(id) {
+      if (!confirm('과제를 삭제하시겠습니까? 관련 제출물도 모두 삭제됩니다.')) return;
+      const res = await fetch(`/api/lecture/${lectureId}/assignments/${id}`, { method:'DELETE' }).catch(() => null);
+      if (res && res.ok) loadAssignments();
+    }
+
+    function fmtDueRange(start, end) {
+      if (!start && !end) return '기간 제한 없음';
+      const fmt = dt => dt ? dt.replace('T', ' ').substring(0, 16) : '';
+      if (start && end) return `${fmt(start)} ~ ${fmt(end)}`;
+      if (end) return `마감: ${fmt(end)}`;
+      return `시작: ${fmt(start)}`;
+    }
+
+    /* ── Q&A ── */
+    async function loadQA() {
+      const res  = await fetch(`/api/lecture/${lectureId}/questions`).catch(() => null);
+      const list = document.getElementById('qaList');
+      if (!res || !res.ok) { list.innerHTML = '<div class="empty-state">질문을 불러올 수 없습니다.</div>'; return; }
+      const data = await res.json();
+      if (!data.length) { list.innerHTML = '<div class="empty-state">등록된 질문이 없습니다.</div>'; return; }
+      list.innerHTML = data.map(q => `
+        <div class="q-card" id="q-${q.id}">
+          <div class="q-content">${esc(q.content)}</div>
+          <div class="q-meta">${esc(q.studentName||'학생')} · ${fmtTime(q.createdAt)}</div>
+          ${q.answer
+            ? `<div class="q-answered"><div class="q-answered-label">내 답변</div>${esc(q.answer)}</div>`
+            : `<div class="answer-form">
+                <textarea class="answer-input" id="ans-${q.id}" placeholder="답변을 입력하세요..."></textarea>
+                <button class="btn-answer" onclick="submitAnswer(${q.id})">답변 등록</button>
+               </div>`}
+        </div>`).join('');
+    }
+
+    async function submitAnswer(qId) {
+      const answer = document.getElementById(`ans-${qId}`).value.trim();
+      if (!answer) return;
+      const res = await fetch(`/api/lecture/${lectureId}/questions/${qId}/answer`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ answer })
+      }).catch(() => null);
+      if (res && res.ok) loadQA();
+    }
+
+    function fmtTime(dt) {
+      if (!dt) return '';
+      try { return new Date(dt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
+      catch { return ''; }
+    }
+
+    function esc(s) {
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function goBack() { window.location.href = 'teacher-lectures.html'; }
+    function logout() {
+      fetch('/api/logout',{method:'POST'}).catch(()=>{});
+      localStorage.removeItem('teacherName');
+      sessionStorage.clear();
+      window.location.href = 'instructor.html';
+    }
+
+    init();
+  </script>
+</body>
+</html>

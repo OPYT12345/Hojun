@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>강의실 배치도 - NFC 수업 시스템</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    :root{
+      --primary:#4f46e5;--primary-light:#6366f1;--primary-dark:#3730a3;
+      --cyan:#06b6d4;--cyan-dark:#0e7490;
+      --success:#10b981;--success-bg:rgba(16,185,129,.15);--success-border:rgba(16,185,129,.35);
+      --danger:#ef4444;--warning:#f59e0b;--purple:#8b5cf6;
+      --bg:#0f0f1a;--surface:#1a1a2e;--surface2:#16213e;--surface3:#1e2040;
+      --border:#2a2a4a;--text:#e2e8f0;--text-muted:#94a3b8;
+    }
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+
+    /* ── HEADER ── */
+    .dash-header{height:60px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0;}
+    .btn-back{background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:5px 12px;font-size:.8rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:5px;}
+    .btn-back:hover{border-color:var(--cyan);color:var(--cyan);}
+    .dash-logo{display:flex;align-items:center;gap:8px;font-size:.95rem;font-weight:700;}
+    .logo-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--cyan-dark),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:15px;}
+    .lec-info-header{display:flex;flex-direction:column;gap:1px;}
+    .lec-title-header{font-size:.95rem;font-weight:700;line-height:1.2;}
+    .lec-sub-header{font-size:.72rem;color:var(--text-muted);}
+    .live-badge{background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:7px;padding:4px 10px;font-size:.72rem;font-weight:700;color:var(--success);display:flex;align-items:center;gap:5px;}
+    .live-dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:blink 1.2s ease-in-out infinite;}
+    @keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+    .spacer{flex:1;}
+    .user-chip{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--text-muted);}
+    .user-av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--cyan-dark),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;}
+    .btn-logout{background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:5px 12px;font-size:.75rem;cursor:pointer;transition:all .2s;margin-left:2px;}
+    .btn-logout:hover{border-color:var(--danger);color:var(--danger);}
+
+    /* ── BODY LAYOUT ── */
+    .body-wrap{flex:1;display:flex;overflow:hidden;}
+
+    /* ── MAIN CONTENT ── */
+    .main-content{flex:1;overflow-y:auto;padding:24px 28px;}
+    .main-content::-webkit-scrollbar{width:4px;}
+    .main-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+    /* ── STATS ROW ── */
+    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+    .stat-chip{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;}
+    .stat-chip-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+    .stat-chip-icon.total{background:rgba(79,70,229,.15);}
+    .stat-chip-icon.present{background:rgba(16,185,129,.15);}
+    .stat-chip-icon.absent{background:rgba(239,68,68,.12);}
+    .stat-chip-icon.rate{background:rgba(6,182,212,.15);}
+    .stat-chip-val{font-size:1.35rem;font-weight:800;line-height:1;}
+    .stat-chip-lbl{font-size:.72rem;color:var(--text-muted);margin-top:2px;}
+
+    /* ── CLASSROOM CARD ── */
+    .classroom-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:28px;}
+
+    .classroom-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px;}
+    .classroom-top-left{display:flex;flex-direction:column;gap:3px;}
+    .classroom-label{font-size:.68rem;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-muted);font-weight:600;}
+    .classroom-name{font-size:1rem;font-weight:700;}
+    .classroom-top-right{display:flex;align-items:center;gap:10px;}
+    .btn-refresh{background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:9px;padding:7px 14px;font-size:.8rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px;}
+    .btn-refresh:hover{border-color:var(--cyan);color:var(--cyan);}
+    .last-updated{font-size:.72rem;color:var(--text-muted);}
+
+    /* ── BLACKBOARD ── */
+    .blackboard{background:var(--surface2);border:2px solid var(--border);border-radius:10px;padding:10px;text-align:center;font-size:.78rem;font-weight:600;color:var(--text-muted);letter-spacing:2px;margin-bottom:28px;position:relative;}
+    .blackboard::after{content:'';position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);width:40px;height:1px;background:var(--border);}
+
+    /* ── SEAT GRID ── */
+    .seat-area{display:flex;justify-content:center;padding:8px 0 16px;}
+    .seat-grid{display:grid;gap:10px;}
+
+    /* ── SEAT ── */
+    .seat{
+      width:82px;height:82px;border-radius:10px;
+      border:2px solid var(--border);background:var(--surface2);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      gap:2px;cursor:default;transition:all .25s;position:relative;
+      user-select:none;
+    }
+    .seat-status-badge{
+      font-size:.52rem;line-height:1.1;text-align:center;max-width:74px;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      color:#facc15;font-weight:600;padding:1px 4px;
+      background:rgba(250,204,21,.12);border-radius:4px;
+      border:1px solid rgba(250,204,21,.25);
+    }
+    .seat.empty{opacity:.35;cursor:not-allowed;}
+    .seat:not(.empty):not(.present):hover{border-color:#4a4a6a;background:var(--surface3);}
+
+    /* 출석 */
+    .seat.present{
+      border-color:var(--success-border);
+      background:var(--success-bg);
+      box-shadow:0 0 12px rgba(16,185,129,.15);
+    }
+    .seat.present .seat-num{color:var(--success);}
+
+    .seat-num{font-size:.63rem;color:var(--text-muted);font-weight:600;line-height:1;}
+    .seat-emoji{font-size:18px;line-height:1;}
+    .seat-name{font-size:.7rem;font-weight:600;line-height:1;text-align:center;max-width:72px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+    /* 출석 체크 indicator */
+    .seat-check{
+      position:absolute;top:4px;right:5px;
+      width:10px;height:10px;border-radius:50%;
+      background:var(--success);
+      display:none;
+    }
+    .seat.present .seat-check{display:block;}
+
+    /* ── LEGEND ── */
+    .legend{display:flex;align-items:center;justify-content:center;gap:20px;margin-top:20px;flex-wrap:wrap;}
+    .legend-item{display:flex;align-items:center;gap:7px;font-size:.78rem;color:var(--text-muted);}
+    .legend-box{width:16px;height:16px;border-radius:4px;border:2px solid;}
+    .legend-box.absent-box{border-color:var(--border);background:var(--surface2);}
+    .legend-box.present-box{border-color:var(--success-border);background:var(--success-bg);}
+    .legend-box.empty-box{border-color:var(--border);background:transparent;opacity:.4;}
+
+    /* ── SIDE PANEL ── */
+    .side-panel{width:260px;flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);padding:20px 16px;display:flex;flex-direction:column;gap:16px;overflow-y:auto;}
+    .side-panel::-webkit-scrollbar{width:3px;}
+    .side-panel::-webkit-scrollbar-thumb{background:var(--border);}
+
+    .panel-section-title{font-size:.68rem;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:8px;}
+
+    /* 출석 리스트 */
+    .att-list{display:flex;flex-direction:column;gap:6px;}
+    .att-item{display:flex;align-items:center;gap:9px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:9px 11px;transition:border-color .2s;}
+    .att-item.present-item{border-color:rgba(16,185,129,.25);}
+    .att-avatar{width:28px;height:28px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+    .att-avatar.present-av{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.3);}
+    .att-item-info{flex:1;min-width:0;}
+    .att-item-name{font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .att-item-meta{font-size:.7rem;color:var(--text-muted);}
+    .att-status{font-size:.68rem;font-weight:700;border-radius:5px;padding:2px 7px;}
+    .att-status.ok{background:rgba(16,185,129,.12);color:var(--success);}
+    .att-status.no{background:rgba(148,163,184,.1);color:var(--text-muted);}
+    .side-student-status{font-size:.68rem;color:#facc15;margin-top:2px;font-style:italic;}
+
+    /* 진행률 바 */
+    .progress-wrap{margin-top:4px;}
+    .progress-label{display:flex;justify-content:space-between;font-size:.76rem;color:var(--text-muted);margin-bottom:6px;}
+    .progress-bar{width:100%;height:7px;background:var(--border);border-radius:4px;overflow:hidden;}
+    .progress-fill{height:100%;background:linear-gradient(90deg,var(--cyan-dark),var(--success));border-radius:4px;transition:width .6s ease;}
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:900px){
+      .side-panel{display:none;}
+      .stats-row{grid-template-columns:1fr 1fr;}
+    }
+    @media(max-width:600px){
+      .main-content{padding:16px;}
+      .seat{width:66px;height:60px;}
+      .seat-name{font-size:.62rem;}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="dash-header">
+    <button class="btn-back" onclick="goBack()">← 강의 목록</button>
+    <div class="logo-icon">📡</div>
+    <div class="lec-info-header">
+      <div class="lec-title-header" id="headerLecName">데이터베이스 설계 및 실습</div>
+      <div class="lec-sub-header" id="headerLecMeta">CS3021-01 · 공학관 401호</div>
+    </div>
+    <div class="live-badge"><div class="live-dot"></div>진행 중</div>
+    <div class="spacer"></div>
+    <div class="user-chip">
+      <div class="user-av" id="avatarInitial">김</div>
+      <span style="color:var(--text);font-weight:600;" id="teacherName">김민준</span>
+    </div>
+    <button class="btn-logout" onclick="logout()">로그아웃</button>
+  </header>
+
+  <!-- BODY -->
+  <div class="body-wrap">
+
+    <!-- MAIN -->
+    <div class="main-content">
+
+      <!-- STATS -->
+      <div class="stats-row">
+        <div class="stat-chip">
+          <div class="stat-chip-icon total">👥</div>
+          <div>
+            <div class="stat-chip-val" id="statTotal">0</div>
+            <div class="stat-chip-lbl">총 수강생</div>
+          </div>
+        </div>
+        <div class="stat-chip">
+          <div class="stat-chip-icon present">✅</div>
+          <div>
+            <div class="stat-chip-val" id="statPresent">0</div>
+            <div class="stat-chip-lbl">출석</div>
+          </div>
+        </div>
+        <div class="stat-chip">
+          <div class="stat-chip-icon absent">❌</div>
+          <div>
+            <div class="stat-chip-val" id="statAbsent">0</div>
+            <div class="stat-chip-lbl">결석</div>
+          </div>
+        </div>
+        <div class="stat-chip">
+          <div class="stat-chip-icon rate">📊</div>
+          <div>
+            <div class="stat-chip-val" id="statRate">0%</div>
+            <div class="stat-chip-lbl">출석률</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CLASSROOM CARD -->
+      <div class="classroom-card">
+        <div class="classroom-top">
+          <div class="classroom-top-left">
+            <div class="classroom-label">자리 배치도</div>
+            <div class="classroom-name" id="roomName">공학관 401호</div>
+          </div>
+          <div class="classroom-top-right">
+            <span class="last-updated" id="lastUpdated">업데이트: 방금 전</span>
+            <button class="btn-refresh" onclick="refreshAttendance()">↻ 새로고침</button>
+          </div>
+        </div>
+
+        <!-- 칠판 -->
+        <div class="blackboard">🖥 칠판 / 강의 화면</div>
+
+        <!-- 자리 배치 -->
+        <div class="seat-area">
+          <div class="seat-grid" id="seatGrid"></div>
+        </div>
+
+        <!-- 범례 -->
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-box present-box"></div>
+            <span>출석 완료</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-box absent-box"></div>
+            <span>미출석 (결석)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-box empty-box"></div>
+            <span>빈 자리</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SIDE PANEL -->
+    <aside class="side-panel">
+      <div>
+        <div class="panel-section-title">출석 현황</div>
+        <div class="progress-wrap">
+          <div class="progress-label">
+            <span>출석률</span>
+            <span id="sideRate">0%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="sideBar" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="panel-section-title">수강생 목록</div>
+        <div class="att-list" id="attList"></div>
+      </div>
+    </aside>
+
+  </div>
+
+  <script>
+    let ROWS = 5, COLS = 6;
+    let seatData = []; // SeatDto 배열
+    let lectureId = null;
+    let eventSource = null;
+
+    /* ── 초기화 ── */
+    async function init() {
+      lectureId = sessionStorage.getItem('lecId');
+      if (!lectureId) { window.location.href = 'teacher-lectures.html'; return; }
+
+      const lecName    = sessionStorage.getItem('lecName') || '강의';
+      const lecCode    = sessionStorage.getItem('lecCode') || '';
+      const lecRoom    = sessionStorage.getItem('lecRoom') || '';
+      const teacherName = localStorage.getItem('teacherName') || '강사';
+
+      document.getElementById('headerLecName').textContent = lecName;
+      document.getElementById('headerLecMeta').textContent = `${lecCode} · ${lecRoom}`;
+      document.getElementById('roomName').textContent = lecRoom || '강의실';
+      document.getElementById('teacherName').textContent = teacherName;
+      document.getElementById('avatarInitial').textContent = teacherName.charAt(0);
+
+      await loadSeats();
+      connectSSE();
+    }
+
+    /* ── API: 자리 배치 로드 ── */
+    async function loadSeats() {
+      try {
+        const res = await fetch(`/api/teacher/lectures/${lectureId}/seats`);
+        if (res.status === 401) { window.location.href = 'instructor.html'; return; }
+        seatData = await res.json();
+        renderSeats();
+        renderSidePanel();
+        updateStats();
+        updateTimestamp();
+      } catch (e) {
+        console.error('자리 정보 로드 실패', e);
+      }
+    }
+
+    /* ── SSE: 실시간 출석 알림 ── */
+    function connectSSE() {
+      if (eventSource) eventSource.close();
+      eventSource = new EventSource(`/api/attendance/stream/${lectureId}`);
+
+      eventSource.addEventListener('seat-update', (e) => {
+        const seat = JSON.parse(e.data);
+        const idx = seatData.findIndex(s => s.seatNum === seat.seatNum);
+        if (idx >= 0) seatData[idx] = seat;
+
+        updateSeatElement(seat);
+        renderSidePanel();
+        updateStats();
+        updateTimestamp();
+        flashSeat(seat.seatNum);
+      });
+
+      eventSource.addEventListener('status-update', (e) => {
+        const seat = JSON.parse(e.data);
+        const idx = seatData.findIndex(s => s.seatNum === seat.seatNum);
+        if (idx >= 0) {
+          // status-update는 present/attendedAt을 갱신하지 않으므로 기존 값 유지
+          seatData[idx].status = seat.status;
+        }
+        updateSeatElement(idx >= 0 ? seatData[idx] : seat);
+        renderSidePanel();
+        updateTimestamp();
+      });
+
+      eventSource.onerror = () => {
+        // 연결 끊기면 자동 재연결 (EventSource 기본 동작)
+      };
+    }
+
+    /* ── 자리 배치 렌더 ── */
+    function renderSeats() {
+      const grid = document.getElementById('seatGrid');
+      // 강의 rows/cols는 세션에 없으므로 기본값 사용 (나중에 API에서 받을 수 있음)
+      const maxSeat = seatData.length > 0 ? Math.max(...seatData.map(s => s.seatNum), ROWS * COLS) : ROWS * COLS;
+      const totalCells = Math.max(maxSeat, ROWS * COLS);
+      grid.style.gridTemplateColumns = `repeat(${COLS}, 82px)`;
+
+      const seatMap = {};
+      seatData.forEach(s => seatMap[s.seatNum] = s);
+
+      let html = '';
+      for (let i = 1; i <= totalCells; i++) {
+        const s = seatMap[i];
+        if (s) {
+          const cls = s.present ? 'present' : '';
+          const emoji = s.present ? '🟢' : '👤';
+          const statusBadge = s.status ? `<div class="seat-status-badge" title="${s.status}">${s.status}</div>` : '';
+          html += `
+            <div class="seat ${cls}" id="seat-${i}" title="${s.studentName} (${s.present ? '출석' : '결석'})${s.status ? ' · ' + s.status : ''}">
+              <div class="seat-check"></div>
+              <div class="seat-num">${i}번</div>
+              <div class="seat-emoji">${emoji}</div>
+              <div class="seat-name">${s.studentName}</div>
+              ${statusBadge}
+            </div>`;
+        } else {
+          html += `<div class="seat empty" id="seat-${i}" title="빈 자리">
+            <div class="seat-num">${i}번</div>
+            <div class="seat-emoji" style="font-size:14px;opacity:.4">—</div>
+          </div>`;
+        }
+      }
+      grid.innerHTML = html;
+    }
+
+    /* ── SSE 수신 시: 특정 자리만 업데이트 ── */
+    function updateSeatElement(seat) {
+      const el = document.getElementById(`seat-${seat.seatNum}`);
+      if (!el) return;
+      const isPresent = seat.present;
+      el.className = 'seat' + (isPresent ? ' present' : '');
+      el.title = `${seat.studentName} (${isPresent ? '출석' : '결석'})${seat.status ? ' · ' + seat.status : ''}`;
+      const statusBadge = seat.status ? `<div class="seat-status-badge" title="${seat.status}">${seat.status}</div>` : '';
+      el.innerHTML = `
+        <div class="seat-check"></div>
+        <div class="seat-num">${seat.seatNum}번</div>
+        <div class="seat-emoji">${isPresent ? '🟢' : '👤'}</div>
+        <div class="seat-name">${seat.studentName}</div>
+        ${statusBadge}`;
+    }
+
+    /* ── 출석 애니메이션 ── */
+    function flashSeat(seatNum) {
+      const el = document.getElementById(`seat-${seatNum}`);
+      if (!el) return;
+      el.style.transition = 'box-shadow .2s';
+      el.style.boxShadow = '0 0 24px rgba(16,185,129,.8)';
+      setTimeout(() => { el.style.boxShadow = ''; }, 1200);
+    }
+
+    /* ── 통계 업데이트 ── */
+    function updateStats() {
+      const total   = seatData.length;
+      const present = seatData.filter(s => s.present).length;
+      const absent  = total - present;
+      const rate    = total > 0 ? Math.round(present / total * 100) : 0;
+
+      document.getElementById('statTotal').textContent   = total;
+      document.getElementById('statPresent').textContent = present;
+      document.getElementById('statAbsent').textContent  = absent;
+      document.getElementById('statRate').textContent    = rate + '%';
+      document.getElementById('sideRate').textContent    = rate + '%';
+      document.getElementById('sideBar').style.width     = rate + '%';
+    }
+
+    /* ── 사이드 패널 ── */
+    function renderSidePanel() {
+      const sorted = [...seatData].sort((a, b) => {
+        if (a.present !== b.present) return a.present ? -1 : 1;
+        return (a.studentName || '').localeCompare(b.studentName || '', 'ko');
+      });
+      document.getElementById('attList').innerHTML = sorted.map(s => `
+        <div class="att-item ${s.present ? 'present-item' : ''}">
+          <div class="att-avatar ${s.present ? 'present-av' : ''}">${s.present ? '✅' : '👤'}</div>
+          <div class="att-item-info">
+            <div class="att-item-name">${s.studentName}</div>
+            <div class="att-item-meta">${s.seatNum}번 자리${s.attendedAt ? ' · ' + s.attendedAt : ''}</div>
+            ${s.status ? `<div class="side-student-status">${s.status}</div>` : ''}
+          </div>
+          <span class="att-status ${s.present ? 'ok' : 'no'}">${s.present ? '출석' : '결석'}</span>
+        </div>`).join('');
+    }
+
+    /* ── 새로고침 ── */
+    async function refreshAttendance() {
+      const btn = document.querySelector('.btn-refresh');
+      btn.textContent = '↻ 갱신 중...';
+      btn.disabled = true;
+      await loadSeats();
+      btn.textContent = '↻ 새로고침';
+      btn.disabled = false;
+    }
+
+    function updateTimestamp() {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2,'0');
+      const mm = String(now.getMinutes()).padStart(2,'0');
+      document.getElementById('lastUpdated').textContent = `업데이트: ${hh}:${mm}`;
+    }
+
+    function goBack() {
+      if (eventSource) eventSource.close();
+      window.location.href = 'teacher-lectures.html';
+    }
+
+    function logout() {
+      if (eventSource) eventSource.close();
+      fetch('/api/logout', { method:'POST' }).catch(()=>{});
+      localStorage.removeItem('teacherName');
+      sessionStorage.clear();
+      window.location.href = 'instructor.html';
+    }
+
+    init();
+  </script>
+</body>
+</html>
