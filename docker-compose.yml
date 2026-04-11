@@ -37,7 +37,7 @@ services:
       DB_PASSWORD: 1234
       SSL_PASSWORD: school2026
       
-      OPENAI_API_KEY: your-openai-api-key-here
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     volumes:
       - uploads_data:/app/uploads
     depends_on:

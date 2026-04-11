@@ -1,3 +1,6 @@
+# 환경변수 (API 키 등 민감 정보)
+.env
+
 # Maven
 target/
 *.class
