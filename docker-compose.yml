@@ -36,7 +36,7 @@ services:
       DB_USERNAME: root
       DB_PASSWORD: 1234
       SSL_PASSWORD: school2026
-      # AI 튜터 기능 사용 시 아래 주석 해제 후 키 입력
+      
       OPENAI_API_KEY: your-openai-api-key-here
     volumes:
       - uploads_data:/app/uploads
