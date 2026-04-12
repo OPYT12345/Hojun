@@ -74,7 +74,7 @@ public class PushNotificationService {
                 log.info("VAPID_PUBLIC_KEY={}", pubKey);
                 log.info("VAPID_PRIVATE_KEY={}", privKey);
                 log.info("====================================================");
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 log.warn("VAPID 키 생성 실패 — 푸시 알림 비활성화: {}", e.getMessage());
                 return;
             }
@@ -86,7 +86,7 @@ public class PushNotificationService {
                     .setPublicKey(pubKey)
                     .setPrivateKey(privKey)
                     .setSubject(vapidSubject);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             log.warn("PushService 초기화 실패 — 푸시 알림 비활성화: {}", e.getMessage());
         }
     }
