@@ -134,6 +134,17 @@ start.bat 더블클릭
 | 이호준 | `hojunopyt12345@gmail.com` | `school2026` |
 | 홍길동 | `hong@gmail.com` | `school2026` |
 
+### 강사·학생 동시 비교 방법
+
+강사와 학생 화면을 동시에 확인하려면 **시크릿 창(InPrivate)**을 활용하세요.
+
+| 창 | 접속 URL | 계정 |
+|----|----------|------|
+| 일반 창 | https://localhost:8443/instructor.html | 강사 (`sooyeup@gmail.com`) |
+| 시크릿 창 (Ctrl+Shift+N) | https://localhost:8443/student.html | 학생 (`hojunopyt12345@gmail.com`) |
+
+두 창을 나란히 배치하면 강사 화면과 학생 화면을 실시간으로 비교할 수 있습니다.
+
 ---
 
 ## 주요 기능
