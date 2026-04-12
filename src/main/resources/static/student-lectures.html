@@ -208,8 +208,43 @@
     <div class="notif-wrap" id="notifWrap">
       <button class="btn-bell" id="btnBell" onclick="toggleNotif()" title="알림">🔔<span class="bell-badge" id="bellBadge" style="display:none;"></span></button>
     </div>
+    <button class="btn-logout" onclick="openPwModal()" style="margin-right:4px;">비밀번호 수정</button>
     <button class="btn-logout" onclick="logout()">로그아웃</button>
   </header>
+
+  <!-- 비밀번호 변경 모달 -->
+  <div id="pwOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:none;align-items:center;justify-content:center;">
+    <div style="background:var(--surface);border-radius:16px;padding:28px 24px;width:320px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.3);">
+      <h3 style="margin:0 0 20px;font-size:1rem;color:var(--text);">비밀번호 수정</h3>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <input id="pwCurrent" type="password" placeholder="현재 비밀번호" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:.88rem;outline:none;">
+        <input id="pwNew" type="password" placeholder="새 비밀번호 (8자 이상)" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:.88rem;outline:none;">
+        <input id="pwConfirm" type="password" placeholder="새 비밀번호 확인" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:.88rem;outline:none;">
+        <p id="pwMsg" style="margin:0;font-size:.8rem;color:var(--danger);min-height:1em;"></p>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button onclick="closePwModal()" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px;color:var(--text-muted);cursor:pointer;font-size:.85rem;">취소</button>
+        <button onclick="submitPwChange()" style="flex:1;background:linear-gradient(135deg,var(--primary-dark),var(--primary-light));border:none;border-radius:8px;padding:9px;color:#fff;cursor:pointer;font-size:.85rem;font-weight:600;">변경</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    function openPwModal(){document.getElementById('pwOverlay').style.display='flex';document.getElementById('pwCurrent').value='';document.getElementById('pwNew').value='';document.getElementById('pwConfirm').value='';document.getElementById('pwMsg').textContent='';}
+    function closePwModal(){document.getElementById('pwOverlay').style.display='none';}
+    async function submitPwChange(){
+      const cur=document.getElementById('pwCurrent').value;
+      const nw=document.getElementById('pwNew').value;
+      const cf=document.getElementById('pwConfirm').value;
+      const msg=document.getElementById('pwMsg');
+      if(!cur){msg.textContent='현재 비밀번호를 입력하세요.';return;}
+      if(nw.length<8){msg.textContent='새 비밀번호는 8자 이상이어야 합니다.';return;}
+      if(nw!==cf){msg.textContent='새 비밀번호가 일치하지 않습니다.';return;}
+      const res=await fetch('/api/user/password',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({currentPassword:cur,newPassword:nw})});
+      const data=await res.json();
+      if(data.success){alert('비밀번호가 변경되었습니다.');closePwModal();}
+      else{msg.style.color='var(--danger)';msg.textContent=data.message;}
+    }
+  </script>
 
   <div class="notif-overlay" id="notifOverlay" onclick="handleOverlayClick(event)">
     <div class="notif-modal">
