@@ -41,15 +41,22 @@ public class Submission {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    /** 강사 채점 점수 (0~100, null = 미채점) */
+    @Column(name = "grade")
+    private Integer grade;
+
+    /** 강사 정성 피드백 */
+    @Column(name = "feedback", columnDefinition = "TEXT")
+    private String feedback;
+
+    /** 채점 완료 시각 */
+    @Column(name = "graded_at")
+    private LocalDateTime gradedAt;
+
     @PrePersist
     protected void onCreate() {
         submittedAt = LocalDateTime.now();
         updatedAt = submittedAt;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
     }
 
     public String getSubmittedAtStr() {
@@ -70,6 +77,13 @@ public class Submission {
     public String getItemsJson()    { return itemsJson; }
     public LocalDateTime getSubmittedAt() { return submittedAt; }
     public LocalDateTime getUpdatedAt()   { return updatedAt; }
+    public Integer getGrade()      { return grade; }
+    public String getFeedback()    { return feedback; }
+    public LocalDateTime getGradedAt() { return gradedAt; }
+
+    public String getGradedAtStr() {
+        return gradedAt != null ? gradedAt.format(DateTimeFormatter.ofPattern("MM/dd HH:mm")) : null;
+    }
 
     public void setAssignmentId(Long v)    { assignmentId = v; }
     public void setLectureId(Long v)       { lectureId = v; }
@@ -80,4 +94,7 @@ public class Submission {
     public void setItemsJson(String v)     { itemsJson = v; }
     public void setSubmittedAt(LocalDateTime v) { submittedAt = v; }
     public void setUpdatedAt(LocalDateTime v)   { updatedAt = v; }
+    public void setGrade(Integer v)        { grade = v; }
+    public void setFeedback(String v)      { feedback = v; }
+    public void setGradedAt(LocalDateTime v) { gradedAt = v; }
 }

@@ -181,7 +181,7 @@ public class AttendanceService {
         Matcher m = Pattern.compile("^([^\\s]+)\\s+").matcher(schedule.trim());
         if (!m.find()) return Set.of();
         Set<DayOfWeek> days = new HashSet<>();
-        for (String token : m.group(1).split("[··]")) {
+        for (String token : m.group(1).split("[\u00B7\u30FB]")) {
             DayOfWeek dow = koreanToDow(token.trim());
             if (dow != null) days.add(dow);
         }

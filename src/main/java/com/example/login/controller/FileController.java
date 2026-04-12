@@ -1,6 +1,8 @@
 package com.example.login.controller;
 
+import com.example.login.entity.Material;
 import com.example.login.entity.User;
+import com.example.login.repository.MaterialRepository;
 import com.example.login.repository.UserRepository;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,9 +27,11 @@ import java.util.UUID;
 public class FileController {
 
     private final UserRepository userRepository;
+    private final MaterialRepository materialRepository;
 
-    public FileController(UserRepository userRepository) {
+    public FileController(UserRepository userRepository, MaterialRepository materialRepository) {
         this.userRepository = userRepository;
+        this.materialRepository = materialRepository;
     }
 
     @Value("${app.upload.dir:uploads}")
@@ -97,7 +101,14 @@ public class FileController {
         }
 
         try {
-            Path path = Paths.get(uploadDir).toAbsolutePath().normalize().resolve(filename).normalize();
+            Path dir  = Paths.get(uploadDir).toAbsolutePath().normalize();
+            Path path = dir.resolve(filename).normalize();
+
+            // 경로 순회(path traversal) 방지: 업로드 디렉터리 밖 접근 차단
+            if (!path.startsWith(dir)) {
+                return ResponseEntity.badRequest().build();
+            }
+
             Resource resource = new UrlResource(path.toUri());
 
             if (!resource.exists()) return ResponseEntity.notFound().build();
@@ -127,10 +138,17 @@ public class FileController {
                 disposition = "inline";
             }
 
-            // 원본 파일명은 저장 시 UUID로 바뀌었으므로 그대로 전달
+            // DB에서 원본 파일명 조회 (없으면 UUID 파일명 그대로 사용)
+            String downloadName = materialRepository.findByUrl("/api/files/" + filename)
+                    .map(Material::getOriginalFilename)
+                    .filter(n -> n != null && !n.isBlank())
+                    .orElse(filename);
+            // 헤더 인젝션 방지: CR/LF/쌍따옴표/백슬래시 제거
+            String safeDownloadName = downloadName.replaceAll("[\\r\\n\"\\\\]", "_");
+
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, disposition + "; filename=\"" + filename + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, disposition + "; filename=\"" + safeDownloadName + "\"")
                     .body(resource);
 
         } catch (MalformedURLException e) {

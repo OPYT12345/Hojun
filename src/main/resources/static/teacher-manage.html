@@ -122,6 +122,22 @@
     .sub-name{font-size:.88rem;font-weight:600;}
     .sub-answer{font-size:.83rem;color:var(--text-muted);margin-top:2px;}
     .sub-time{font-size:.74rem;color:var(--text-muted);}
+
+    /* 채점 폼 */
+    .grade-form{margin-top:10px;border-top:1px solid var(--border);padding-top:10px;width:100%;}
+    .grade-form-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+    .grade-input{width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:.84rem;text-align:center;outline:none;transition:border-color .2s;}
+    .grade-input:focus{border-color:var(--cyan);}
+    .grade-label{font-size:.78rem;color:var(--text-muted);}
+    .grade-feedback{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:.82rem;font-family:inherit;resize:vertical;min-height:56px;outline:none;margin-bottom:8px;transition:border-color .2s;}
+    .grade-feedback:focus{border-color:var(--cyan);}
+    .grade-feedback::placeholder{color:var(--text-muted);}
+    .btn-grade{background:linear-gradient(135deg,var(--cyan-dark),var(--cyan));color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:.8rem;font-weight:700;cursor:pointer;transition:opacity .2s;}
+    .btn-grade:hover{opacity:.85;}
+    .btn-grade:disabled{opacity:.45;cursor:not-allowed;}
+    .grade-done{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:8px 12px;font-size:.8rem;margin-top:8px;width:100%;}
+    .grade-done-score{font-weight:800;color:var(--success);}
+    .grade-done-fb{color:var(--text-muted);margin-top:3px;white-space:pre-wrap;line-height:1.4;}
   </style>
 </head>
 <body>
@@ -143,6 +159,7 @@
       <button class="tab active" onclick="switchTab('materials',this)">📎 자료 관리</button>
       <button class="tab" onclick="switchTab('assignments',this)">📋 과제 관리</button>
       <button class="tab" onclick="switchTab('qa',this)">💬 Q&A</button>
+      <button class="tab" onclick="switchTab('announcements',this)">📢 공지</button>
       <button class="tab" onclick="switchTab('settings',this)">⚙️ 강의 설정</button>
     </div>
 
@@ -266,6 +283,26 @@
         <div id="period-result" style="margin-top:10px;font-size:.83rem;"></div>
       </div>
     </div>
+
+    <!-- 공지 관리 -->
+    <div class="tab-panel" id="tab-announcements">
+      <div class="section-title">공지 등록</div>
+      <div class="form-card">
+        <div class="form-row">
+          <label class="form-label">제목</label>
+          <input class="form-input" id="ann-title" placeholder="예: 중간고사 일정 안내" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">내용</label>
+          <textarea class="form-input" id="ann-content" rows="4" placeholder="수강생에게 전달할 내용을 입력하세요..."></textarea>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="postAnnouncement()">📢 공지 전송</button>
+        </div>
+      </div>
+      <div class="section-title">공지 목록</div>
+      <div id="announcementList"><div class="empty-state">불러오는 중...</div></div>
+    </div>
   </main>
 
   <script>
@@ -294,6 +331,7 @@
       btn.classList.add('active');
       document.getElementById('tab-' + name).classList.add('active');
       if (name === 'settings') loadPeriod();
+      if (name === 'announcements') loadAnnouncements();
     }
 
     /* ── 강의 기간 로드 ── */
@@ -383,6 +421,7 @@
       btn.disabled = true;
 
       let url = '';
+      let originalFilename = '';
 
       if (isFile) {
         const fileInput = document.getElementById('mat-file');
@@ -403,11 +442,12 @@
         }
         const uploadData = await uploadRes.json();
         url = uploadData.url;
+        originalFilename = uploadData.filename || '';
       } else {
         url = document.getElementById('mat-url').value.trim();
       }
 
-      const body = { title, type, url, description: document.getElementById('mat-desc').value.trim() };
+      const body = { title, type, url, description: document.getElementById('mat-desc').value.trim(), filename: originalFilename };
       const res = await fetch(`/api/lecture/${lectureId}/materials`, {
         method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
       }).catch(() => null);
@@ -614,14 +654,35 @@
           const label = {pdf:'PDF',ppt:'PPT',hwp:'한글',link:'링크'}[it.type] || it.type;
           return `<a href="${esc(it.url)}" target="_blank" rel="noopener" class="mat-badge ${esc(it.type||'etc')}" style="text-decoration:none;margin-right:4px;">${label}: ${esc(it.name||it.url)}</a>`;
         }).join('');
+
+        // 채점 완료 여부에 따라 결과 or 폼 표시
+        const hasGrade = s.grade !== null && s.grade !== undefined;
+        const gradeSection = (hasGrade || s.feedback)
+          ? `<div class="grade-done">
+               <span class="grade-done-score">📊 ${hasGrade ? s.grade + '점 / 100' : '피드백만'}</span>
+               <span style="font-size:.72rem;color:var(--text-muted);margin-left:8px;">${s.gradedAt || ''}</span>
+               ${s.feedback ? `<div class="grade-done-fb">${esc(s.feedback)}</div>` : ''}
+               <button style="margin-top:8px;" class="btn-edit-sm" data-sub="${s.id}" data-asg="${asgId}" data-grade="${s.grade ?? ''}" data-feedback="${esc(s.feedback||'')}" onclick="openGradeFormFromBtn(this)">수정</button>
+             </div>`
+          : `<div class="grade-form" id="gf-${s.id}" style="display:none;">
+               <div class="grade-form-row">
+                 <input class="grade-input" type="number" min="0" max="100" placeholder="점수" id="gi-${s.id}" />
+                 <span class="grade-label">점 / 100</span>
+               </div>
+               <textarea class="grade-feedback" id="gfb-${s.id}" placeholder="정성 피드백 (선택)"></textarea>
+               <button class="btn-grade" onclick="submitGrade('${s.id}','${asgId}')">채점 완료</button>
+             </div>
+             <button class="btn-edit-sm" style="margin-top:8px;" onclick="openGradeForm('${s.id}','${asgId}',null,'')">채점하기</button>`;
+
         return `
-        <div class="sub-card" style="flex-direction:column;align-items:flex-start;gap:6px;">
+        <div class="sub-card" style="flex-direction:column;align-items:flex-start;gap:6px;" id="sc-${s.id}">
           <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
             <div class="sub-name">${displayName}</div>
             <div class="sub-time">${s.submittedAt || ''}${isEdited ? ` <span style="color:var(--cyan);font-size:.7rem;">수정됨 ${s.updatedAt}</span>` : ''}</div>
           </div>
           ${s.textContent ? `<div class="sub-answer" style="white-space:pre-wrap;line-height:1.5;">${esc(s.textContent)}</div>` : ''}
           ${itemsHtml ? `<div>${itemsHtml}</div>` : ''}
+          ${gradeSection}
         </div>`;
       }).join('');
     }
@@ -629,6 +690,43 @@
     function toggleSubs(asgId) {
       const panel = document.getElementById(`subs-panel-${asgId}`);
       panel.classList.toggle('open');
+    }
+
+    function openGradeFormFromBtn(btn) {
+      const grade = btn.dataset.grade !== '' ? btn.dataset.grade : null;
+      openGradeForm(btn.dataset.sub, btn.dataset.asg, grade, btn.dataset.feedback);
+    }
+
+    function openGradeForm(subId, asgId, grade, feedback) {
+      const form = document.getElementById(`gf-${subId}`);
+      if (!form) return;
+      form.style.display = 'block';
+      const gi = document.getElementById(`gi-${subId}`);
+      const gfb = document.getElementById(`gfb-${subId}`);
+      if (gi && grade !== null && grade !== '') gi.value = grade;
+      if (gfb && feedback) gfb.value = feedback;
+    }
+
+    async function submitGrade(subId, asgId) {
+      const gradeVal = document.getElementById(`gi-${subId}`)?.value;
+      const feedbackVal = document.getElementById(`gfb-${subId}`)?.value || '';
+      const btn = document.querySelector(`#gf-${subId} .btn-grade`);
+      if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
+
+      const body = { feedback: feedbackVal };
+      if (gradeVal !== '' && gradeVal !== undefined) body.grade = Number(gradeVal);
+
+      const res = await fetch(
+        `/api/lecture/${lectureId}/assignments/${asgId}/submissions/${subId}/grade`,
+        { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }
+      ).catch(() => null);
+
+      if (btn) { btn.disabled = false; btn.textContent = '채점 완료'; }
+      if (res && res.ok) {
+        loadSubs(asgId, true);
+      } else {
+        alert('채점 저장에 실패했습니다.');
+      }
     }
 
     async function submitAssignment() {
@@ -754,6 +852,48 @@
 
     function esc(s) {
       return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    /* ── 공지 ── */
+    async function loadAnnouncements() {
+      const list = document.getElementById('announcementList');
+      const res  = await fetch(`/api/lecture/${lectureId}/announcements`).catch(() => null);
+      if (!res || !res.ok) { list.innerHTML = '<div class="empty-state">불러오기 실패</div>'; return; }
+      const data = await res.json();
+      if (!data.length) { list.innerHTML = '<div class="empty-state">등록된 공지가 없습니다.</div>'; return; }
+      list.innerHTML = data.map(a => `
+        <div class="item-card">
+          <div class="item-body">
+            <div class="item-title">${esc(a.title)}</div>
+            <div class="item-meta">${esc(a.createdAt)}</div>
+            ${a.content ? `<div class="item-desc">${esc(a.content)}</div>` : ''}
+          </div>
+          <button class="btn-danger-sm" onclick="deleteAnnouncement(${a.id})">삭제</button>
+        </div>`).join('');
+    }
+
+    async function postAnnouncement() {
+      const title   = document.getElementById('ann-title').value.trim();
+      const content = document.getElementById('ann-content').value.trim();
+      if (!title) { alert('제목을 입력하세요.'); return; }
+      const res = await fetch(`/api/lecture/${lectureId}/announcements`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content })
+      }).catch(() => null);
+      if (res && res.ok) {
+        document.getElementById('ann-title').value   = '';
+        document.getElementById('ann-content').value = '';
+        loadAnnouncements();
+      } else {
+        alert('공지 전송에 실패했습니다.');
+      }
+    }
+
+    async function deleteAnnouncement(id) {
+      if (!confirm('공지를 삭제하시겠습니까?')) return;
+      const res = await fetch(`/api/lecture/${lectureId}/announcements/${id}`, { method: 'DELETE' }).catch(() => null);
+      if (res && res.ok) loadAnnouncements();
     }
 
     function goBack() { window.location.href = 'teacher-lectures.html'; }

@@ -10,10 +10,11 @@ import org.springframework.stereotype.Service;
 public class SignupService {
 
     private final UserRepository userRepository;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final BCryptPasswordEncoder passwordEncoder;
 
-    public SignupService(UserRepository userRepository) {
+    public SignupService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public void signupStudent(SignupRequest req) {

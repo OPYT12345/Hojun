@@ -3,6 +3,7 @@ package com.example.login.controller;
 import com.example.login.dto.*;
 import com.example.login.entity.User;
 import com.example.login.repository.UserRepository;
+import com.example.login.service.AiBudgetService;
 import com.example.login.service.AiService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.http.ResponseEntity;
@@ -14,12 +15,15 @@ import java.util.List;
 @RequestMapping("/api/ai")
 public class AiController {
 
-    private final AiService      aiService;
-    private final UserRepository userRepository;
+    private final AiService       aiService;
+    private final UserRepository  userRepository;
+    private final AiBudgetService aiBudgetService;
 
-    public AiController(AiService aiService, UserRepository userRepository) {
-        this.aiService      = aiService;
-        this.userRepository = userRepository;
+    public AiController(AiService aiService, UserRepository userRepository,
+                        AiBudgetService aiBudgetService) {
+        this.aiService       = aiService;
+        this.userRepository  = userRepository;
+        this.aiBudgetService = aiBudgetService;
     }
 
     // -------------------------------------------------------
@@ -31,13 +35,21 @@ public class AiController {
             @RequestBody StudentChatRequest req,
             HttpSession session) {
 
-        if (session.getAttribute("userId") == null) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
             return ResponseEntity.status(401).body(new AiResponse(false, "로그인이 필요합니다."));
         }
 
         List<StudentChatRequest.Message> messages = req.getMessages();
         if (messages == null || messages.isEmpty()) {
             return ResponseEntity.badRequest().body(new AiResponse(false, "메시지가 없습니다."));
+        }
+
+        // 예산 한도 검사: 사용자별 시간당 + 전역 일별 한도
+        if (!aiBudgetService.tryConsume(userId)) {
+            int remaining = aiBudgetService.getRemainingCalls(userId);
+            return ResponseEntity.status(429).body(new AiResponse(false,
+                    "AI 호출 한도에 도달했습니다. 잠시 후 다시 시도해주세요. (남은 횟수: " + remaining + ")"));
         }
 
         String systemPrompt = buildStudentSystemPrompt(req.getLectureName(), req.getContext());
@@ -48,7 +60,8 @@ public class AiController {
         } catch (IllegalStateException e) {
             return ResponseEntity.status(503).body(new AiResponse(false, e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(new AiResponse(false, "AI 응답 중 오류가 발생했습니다: " + e.getMessage()));
+            System.err.println("[AiController/student-chat] " + e.getMessage());
+            return ResponseEntity.status(500).body(new AiResponse(false, "AI 응답 중 오류가 발생했습니다."));
         }
     }
 
@@ -61,7 +74,8 @@ public class AiController {
             @RequestBody StudentChatRequest req,
             HttpSession session) {
 
-        if (session.getAttribute("userId") == null) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
             return ResponseEntity.status(401).body(new AiResponse(false, "로그인이 필요합니다."));
         }
 
@@ -70,13 +84,19 @@ public class AiController {
             return ResponseEntity.badRequest().body(new AiResponse(false, "메시지가 없습니다."));
         }
 
+        // 예산 한도 검사
+        if (!aiBudgetService.tryConsume(userId)) {
+            return ResponseEntity.status(429).body(new AiResponse(false, "AI 호출 한도에 도달했습니다. 잠시 후 다시 시도해주세요."));
+        }
+
         try {
             String reply = aiService.callOpenAIWithHistory(buildCounselSystemPrompt(), messages);
             return ResponseEntity.ok(new AiResponse(reply));
         } catch (IllegalStateException e) {
             return ResponseEntity.status(503).body(new AiResponse(false, e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(new AiResponse(false, "AI 응답 중 오류가 발생했습니다: " + e.getMessage()));
+            System.err.println("[AiController/counsel] " + e.getMessage());
+            return ResponseEntity.status(500).body(new AiResponse(false, "AI 응답 중 오류가 발생했습니다."));
         }
     }
 
@@ -89,13 +109,18 @@ public class AiController {
             @RequestBody InstructorAnalyzeRequest req,
             HttpSession session) {
 
-        if (session.getAttribute("userId") == null) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
             return ResponseEntity.status(401).body(new AiResponse(false, "로그인이 필요합니다."));
         }
-        boolean isTeacher = userRepository.findById((Long) session.getAttribute("userId"))
+        boolean isTeacher = userRepository.findById(userId)
                 .map(u -> u.getRole() == User.Role.TEACHER).orElse(false);
         if (!isTeacher) {
             return ResponseEntity.status(403).body(new AiResponse(false, "강사만 사용할 수 있습니다."));
+        }
+        // 예산 한도 검사
+        if (!aiBudgetService.tryConsume(userId)) {
+            return ResponseEntity.status(429).body(new AiResponse(false, "AI 호출 한도에 도달했습니다. 잠시 후 다시 시도해주세요."));
         }
 
         String systemPrompt = buildInstructorSystemPrompt(req.getLectureName());
@@ -107,7 +132,8 @@ public class AiController {
         } catch (IllegalStateException e) {
             return ResponseEntity.status(503).body(new AiResponse(false, e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(new AiResponse(false, "AI 분석 중 오류가 발생했습니다: " + e.getMessage()));
+            System.err.println("[AiController/instructor-analyze] " + e.getMessage());
+            return ResponseEntity.status(500).body(new AiResponse(false, "AI 분석 중 오류가 발생했습니다."));
         }
     }
 
@@ -120,10 +146,11 @@ public class AiController {
             @RequestBody InstructorSuggestRequest req,
             HttpSession session) {
 
-        if (session.getAttribute("userId") == null) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
             return ResponseEntity.status(401).body(new AiResponse(false, "로그인이 필요합니다."));
         }
-        boolean isTeacher = userRepository.findById((Long) session.getAttribute("userId"))
+        boolean isTeacher = userRepository.findById(userId)
                 .map(u -> u.getRole() == User.Role.TEACHER).orElse(false);
         if (!isTeacher) {
             return ResponseEntity.status(403).body(new AiResponse(false, "강사만 사용할 수 있습니다."));
@@ -131,6 +158,11 @@ public class AiController {
 
         if (req.getQuestion() == null || req.getQuestion().isBlank()) {
             return ResponseEntity.badRequest().body(new AiResponse(false, "질문 내용이 없습니다."));
+        }
+
+        // 예산 한도 검사
+        if (!aiBudgetService.tryConsume(userId)) {
+            return ResponseEntity.status(429).body(new AiResponse(false, "AI 호출 한도에 도달했습니다. 잠시 후 다시 시도해주세요."));
         }
 
         String systemPrompt = buildInstructorSystemPrompt(req.getLectureName());
@@ -144,7 +176,8 @@ public class AiController {
         } catch (IllegalStateException e) {
             return ResponseEntity.status(503).body(new AiResponse(false, e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(new AiResponse(false, "AI 제안 중 오류가 발생했습니다: " + e.getMessage()));
+            System.err.println("[AiController/instructor-suggest] " + e.getMessage());
+            return ResponseEntity.status(500).body(new AiResponse(false, "AI 제안 중 오류가 발생했습니다."));
         }
     }
 
@@ -170,11 +203,13 @@ public class AiController {
     private String buildStudentSystemPrompt(String lectureName, String context) {
         StringBuilder sb = new StringBuilder();
         sb.append("당신은 대학교 수업을 돕는 친절한 AI 튜터입니다.\n");
-        if (lectureName != null && !lectureName.isBlank()) {
-            sb.append("현재 강의: ").append(lectureName).append("\n");
+        String safeName = sanitizePromptInput(lectureName, 100);
+        String safeCtx  = sanitizePromptInput(context, 500);
+        if (!safeName.isBlank()) {
+            sb.append("현재 강의: ").append(safeName).append("\n");
         }
-        if (context != null && !context.isBlank()) {
-            sb.append("수업 맥락: ").append(context).append("\n");
+        if (!safeCtx.isBlank()) {
+            sb.append("수업 맥락: ").append(safeCtx).append("\n");
         }
         sb.append("""
                 역할:
@@ -190,8 +225,9 @@ public class AiController {
     private String buildInstructorSystemPrompt(String lectureName) {
         StringBuilder sb = new StringBuilder();
         sb.append("당신은 대학교 강사를 돕는 AI 교육 분석가입니다.\n");
-        if (lectureName != null && !lectureName.isBlank()) {
-            sb.append("분석 대상 강의: ").append(lectureName).append("\n");
+        String safeName = sanitizePromptInput(lectureName, 100);
+        if (!safeName.isBlank()) {
+            sb.append("분석 대상 강의: ").append(safeName).append("\n");
         }
         sb.append("""
                 역할:
@@ -204,8 +240,22 @@ public class AiController {
         return sb.toString();
     }
 
+    /**
+     * 프롬프트 인젝션 방어 — 사용자 입력을 시스템 프롬프트에 삽입하기 전에 정제.
+     *
+     * 제거 대상:
+     *   - 개행/탭 문자 : 프롬프트 구조를 깨뜨려 역할 전환(role override) 시도에 사용
+     *   - 길이 초과분 : 과도하게 긴 입력으로 시스템 프롬프트를 희석하는 공격 차단
+     */
+    private String sanitizePromptInput(String input, int maxLen) {
+        if (input == null) return "";
+        String s = input.replaceAll("[\r\n\t]", " ").trim();
+        return s.length() > maxLen ? s.substring(0, maxLen) : s;
+    }
+
     private String buildAnalysisPrompt(String analysisType, String lectureName) {
-        String lecture = (lectureName != null && !lectureName.isBlank()) ? lectureName : "현재 강의";
+        String lecture = (lectureName != null && !lectureName.isBlank())
+                ? sanitizePromptInput(lectureName, 100) : "현재 강의";
         return switch (analysisType == null ? "" : analysisType) {
             case "submissions" -> """
                     "%s" 강의의 학생 제출물을 분석해주세요.

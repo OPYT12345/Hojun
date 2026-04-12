@@ -4,6 +4,7 @@ import com.example.login.dto.SeatDto;
 import com.example.login.entity.LectureEnrollment;
 import com.example.login.repository.LectureEnrollmentRepository;
 import com.example.login.service.AttendanceService;
+import com.example.login.util.MapRequestUtils;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/student")
@@ -35,12 +37,22 @@ public class StudentStatusController {
         Long studentId = (Long) session.getAttribute("userId");
         if (studentId == null) return ResponseEntity.status(401).body(fail(null));
 
-        Long lectureId = body.get("lectureId") != null
-            ? ((Number) body.get("lectureId")).longValue() : null;
-        String status = (String) body.get("status");
+        Optional<Long> lectureIdOpt = MapRequestUtils.parseLong(body.get("lectureId"));
+        if (lectureIdOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(fail("lectureId가 올바르지 않습니다."));
+        }
+        Long lectureId = lectureIdOpt.get();
 
-        if (lectureId == null || status == null || status.isBlank())
+        Optional<String> statusOpt = MapRequestUtils.parseStringContent(body.get("status"));
+        String status = statusOpt.map(String::trim).orElse("");
+        if (status.isBlank()) {
             return ResponseEntity.badRequest().body(fail("잘못된 요청입니다."));
+        }
+        // 보안: 길이 제한 + HTML/스크립트 태그 제거 (SSE 스트림을 통한 XSS 방어)
+        if (status.length() > 50) {
+            return ResponseEntity.badRequest().body(fail("상태 메시지는 50자를 초과할 수 없습니다."));
+        }
+        status = sanitizeStatus(status);
 
         var opt = enrollmentRepo.findByStudentIdAndLectureId(studentId, lectureId);
         if (opt.isEmpty()) return ResponseEntity.status(403).body(fail("수강 등록된 강의가 아닙니다."));
@@ -114,5 +126,18 @@ public class StudentStatusController {
         m.put("success", false);
         if (message != null) m.put("message", message);
         return m;
+    }
+
+    /**
+     * HTML 태그 및 제어 문자 제거.
+     * SSE 스트림으로 강사 브라우저에 전송되므로 스크립트 삽입 시도를 차단합니다.
+     */
+    private String sanitizeStatus(String input) {
+        if (input == null) return "";
+        // HTML 태그 제거 (<script>, <img onerror=...> 등)
+        String sanitized = input.replaceAll("<[^>]*>", "");
+        // 제어 문자(개행, 탭 등) 제거 — SSE 이벤트 파싱 오염 방지
+        sanitized = sanitized.replaceAll("[\r\n\t]", " ");
+        return sanitized.trim();
     }
 }

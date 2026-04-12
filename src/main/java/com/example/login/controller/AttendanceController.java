@@ -1,7 +1,11 @@
 package com.example.login.controller;
 
 import com.example.login.dto.AttendanceResponse;
+import com.example.login.entity.User;
+import com.example.login.repository.LectureRepository;
+import com.example.login.repository.UserRepository;
 import com.example.login.service.AttendanceService;
+import com.example.login.util.MapRequestUtils;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -9,15 +13,22 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/attendance")
 public class AttendanceController {
 
     private final AttendanceService attendanceService;
+    private final UserRepository    userRepository;
+    private final LectureRepository lectureRepository;
 
-    public AttendanceController(AttendanceService attendanceService) {
-        this.attendanceService = attendanceService;
+    public AttendanceController(AttendanceService attendanceService,
+                                UserRepository userRepository,
+                                LectureRepository lectureRepository) {
+        this.attendanceService   = attendanceService;
+        this.userRepository      = userRepository;
+        this.lectureRepository   = lectureRepository;
     }
 
     /**
@@ -36,8 +47,12 @@ public class AttendanceController {
 
         Object lecIdObj = body.get("lectureId");
         if (lecIdObj != null) {
-            Long lectureId = ((Number) lecIdObj).longValue();
-            return ResponseEntity.ok(attendanceService.checkIn(studentId, lectureId));
+            Optional<Long> lectureIdOpt = MapRequestUtils.parseLong(lecIdObj);
+            if (lectureIdOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(
+                    new AttendanceResponse(false, "lectureId 형식이 올바르지 않습니다.", false, null));
+            }
+            return ResponseEntity.ok(attendanceService.checkIn(studentId, lectureIdOpt.get()));
         }
 
         // lectureId 없으면 활성 강의 자동 탐색
@@ -57,10 +72,22 @@ public class AttendanceController {
 
     /**
      * GET /api/attendance/stream/{lectureId}
-     * 강사 브라우저가 SSE 구독 — 학생 출석 시 실시간 알림
+     * 강사 브라우저가 SSE 구독 — 학생 출석 시 실시간 알림 (강사만 접근 가능)
      */
     @GetMapping(value = "/stream/{lectureId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter stream(@PathVariable Long lectureId) {
-        return attendanceService.subscribe(lectureId);
+    public ResponseEntity<SseEmitter> stream(@PathVariable Long lectureId, HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(401).build();
+        }
+        boolean isTeacher = userRepository.findById(userId)
+                .map(u -> u.getRole() == User.Role.TEACHER).orElse(false);
+        if (!isTeacher) {
+            return ResponseEntity.status(403).build();
+        }
+        if (!lectureRepository.existsByIdAndTeacherId(lectureId, userId)) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(attendanceService.subscribe(lectureId));
     }
 }

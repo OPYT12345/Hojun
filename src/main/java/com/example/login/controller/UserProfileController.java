@@ -29,9 +29,6 @@ public class UserProfileController {
      *   "username": "hong@example.com",
      *   "name": "홍길동"
      * }
-     *
-     * [프론트엔드 담당자]
-     * 파일: src/main/resources/static/main.js → 45번째 줄 displayUserProfile()
      */
     @GetMapping("/profile")
     public ResponseEntity<Object> getProfile(HttpSession session) {

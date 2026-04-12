@@ -25,6 +25,34 @@
     .btn-logout{background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:5px 12px;font-size:.75rem;cursor:pointer;transition:all .2s;margin-left:4px;}
     .btn-logout:hover{border-color:var(--danger);color:var(--danger);}
 
+    /* NOTIFICATION BELL */
+    .notif-wrap{position:relative;display:flex;align-items:center;}
+    .btn-bell{background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:5px 10px;font-size:1rem;cursor:pointer;transition:all .2s;position:relative;display:flex;align-items:center;justify-content:center;}
+    .btn-bell:hover{border-color:var(--primary-light);color:var(--primary-light);}
+    .bell-badge{position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border-radius:999px;font-size:.6rem;font-weight:700;min-width:16px;height:16px;padding:0 4px;display:flex;align-items:center;justify-content:center;pointer-events:none;}
+
+    /* NOTIFICATION MODAL */
+    .notif-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;padding:20px;}
+    .notif-overlay.open{display:flex;}
+    .notif-modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;width:100%;max-width:460px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+    .notif-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+    .notif-head-title{font-size:.9rem;font-weight:700;}
+    .notif-head-actions{display:flex;align-items:center;gap:10px;}
+    .btn-read-all{background:transparent;border:none;color:var(--primary-light);font-size:.75rem;cursor:pointer;padding:0;}
+    .btn-read-all:hover{text-decoration:underline;}
+    .btn-notif-close{background:transparent;border:none;color:var(--text-muted);font-size:1.2rem;cursor:pointer;line-height:1;padding:2px 6px;border-radius:6px;}
+    .btn-notif-close:hover{background:var(--surface2);color:var(--text);}
+    .notif-list{overflow-y:auto;flex:1;}
+    .notif-item{padding:14px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
+    .notif-item:last-child{border-bottom:none;}
+    .notif-item:hover{background:var(--surface2);}
+    .notif-item.unread{background:rgba(79,70,229,.07);}
+    .notif-item-title{font-size:.84rem;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+    .notif-dot{width:6px;height:6px;border-radius:50%;background:var(--primary-light);flex-shrink:0;}
+    .notif-item-msg{font-size:.78rem;color:var(--text-muted);white-space:pre-wrap;line-height:1.5;}
+    .notif-item-time{font-size:.7rem;color:var(--text-muted);margin-top:5px;}
+    .notif-empty{padding:40px 18px;text-align:center;font-size:.82rem;color:var(--text-muted);}
+
     /* MAIN */
     main{flex:1;padding:36px 32px;max-width:960px;width:100%;margin:0 auto;}
 
@@ -177,8 +205,24 @@
       <div class="user-av" id="avatarInitial">이</div>
       <span style="color:var(--text);font-weight:600;" id="studentName">학생</span>
     </div>
+    <div class="notif-wrap" id="notifWrap">
+      <button class="btn-bell" id="btnBell" onclick="toggleNotif()" title="알림">🔔<span class="bell-badge" id="bellBadge" style="display:none;"></span></button>
+    </div>
     <button class="btn-logout" onclick="logout()">로그아웃</button>
   </header>
+
+  <div class="notif-overlay" id="notifOverlay" onclick="handleOverlayClick(event)">
+    <div class="notif-modal">
+      <div class="notif-head">
+        <span class="notif-head-title">🔔 알림</span>
+        <div class="notif-head-actions">
+          <button class="btn-read-all" onclick="markAllRead()">모두 읽음</button>
+          <button class="btn-notif-close" onclick="closeNotif()">✕</button>
+        </div>
+      </div>
+      <div class="notif-list" id="notifList"><div class="notif-empty">알림이 없습니다.</div></div>
+    </div>
+  </div>
 
   <main>
     <div class="greeting">
@@ -230,6 +274,69 @@
       document.getElementById('avatarInitial').textContent = name.charAt(0);
 
       await loadLectures();
+      refreshBadge();
+      setInterval(refreshBadge, 30000);
+    }
+
+    // ── 알림 ────────────────────────────────────────────────────
+    async function refreshBadge() {
+      const res = await fetch('/api/notifications/unread-count').catch(() => null);
+      if (!res || !res.ok) return;
+      const { count } = await res.json();
+      const badge = document.getElementById('bellBadge');
+      if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : count;
+        badge.style.display = 'flex';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    async function toggleNotif() {
+      await loadNotifList();
+      document.getElementById('notifOverlay').classList.add('open');
+    }
+
+    function closeNotif() {
+      document.getElementById('notifOverlay').classList.remove('open');
+    }
+
+    function handleOverlayClick(e) {
+      if (e.target === document.getElementById('notifOverlay')) closeNotif();
+    }
+
+    async function loadNotifList() {
+      const res = await fetch('/api/notifications').catch(() => null);
+      if (!res || !res.ok) return;
+      const items = await res.json();
+      const el = document.getElementById('notifList');
+      if (!items.length) { el.innerHTML = '<div class="notif-empty">알림이 없습니다.</div>'; return; }
+      el.innerHTML = items.map(n => `
+        <div class="notif-item${n.read ? '' : ' unread'}" onclick="readNotif(${n.id}, this)">
+          <div class="notif-item-title">${n.read ? '' : '<span class="notif-dot"></span>'}${escHtml(n.title)}</div>
+          <div class="notif-item-msg">${escHtml(n.message)}</div>
+          <div class="notif-item-time">${n.createdAt}</div>
+        </div>`).join('');
+    }
+
+    async function readNotif(id, el) {
+      await fetch(`/api/notifications/${id}/read`, { method:'PUT' }).catch(() => null);
+      el.classList.remove('unread');
+      el.querySelector('.notif-dot')?.remove();
+      refreshBadge();
+    }
+
+    async function markAllRead() {
+      await fetch('/api/notifications/read-all', { method:'PUT' }).catch(() => null);
+      document.querySelectorAll('.notif-item.unread').forEach(el => {
+        el.classList.remove('unread');
+        el.querySelector('.notif-dot')?.remove();
+      });
+      refreshBadge();
+    }
+
+    function escHtml(s) {
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
     async function loadLectures() {

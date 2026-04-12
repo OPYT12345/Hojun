@@ -27,6 +27,9 @@ public class Material {
     @Column(name = "description")
     private String description;
 
+    @Column(name = "original_filename")
+    private String originalFilename;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -47,10 +50,12 @@ public class Material {
     public String getType() { return type; }
     public String getUrl() { return url; }
     public String getDescription() { return description; }
+    public String getOriginalFilename() { return originalFilename; }
 
     public void setLectureId(Long lectureId) { this.lectureId = lectureId; }
     public void setTitle(String title) { this.title = title; }
     public void setType(String type) { this.type = type; }
     public void setUrl(String url) { this.url = url; }
     public void setDescription(String description) { this.description = description; }
+    public void setOriginalFilename(String originalFilename) { this.originalFilename = originalFilename; }
 }

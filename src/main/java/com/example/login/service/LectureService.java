@@ -57,17 +57,24 @@ public class LectureService {
     public List<LectureDto> getTeacherLectures(Long teacherId) {
         LocalDate today = LocalDate.now();
         List<Lecture> lectures = lectureRepo.findByTeacherId(teacherId);
+        if (lectures.isEmpty()) return List.of();
+
+        List<Long> lectureIds = lectures.stream().map(Lecture::getId).toList();
+
+        // 강의별 전체 수강자 수 (JOIN FETCH로 student 한 번에 조회)
+        Map<Long, Long> totalMap = enrollmentRepo.findByLectureIdInWithStudents(lectureIds).stream()
+                .filter(e -> e.getStudent().getRole() == User.Role.STUDENT)
+                .collect(Collectors.groupingBy(e -> e.getLecture().getId(), Collectors.counting()));
+
+        // 강의별 오늘 출석자 수 (JOIN FETCH로 student 한 번에 조회)
+        Map<Long, Long> presentMap = attendanceRepo.findByLectureIdInAndAttendDateWithStudents(lectureIds, today).stream()
+                .filter(a -> a.getStudent().getRole() == User.Role.STUDENT)
+                .collect(Collectors.groupingBy(a -> a.getLecture().getId(), Collectors.counting()));
 
         return lectures.stream().map(l -> {
             LectureDto dto = toDto(l);
-            int total = (int) enrollmentRepo.findByLectureId(l.getId()).stream()
-                    .filter(e -> e.getStudent().getRole() == User.Role.STUDENT)
-                    .count();
-            int present = (int) attendanceRepo.findByLectureIdAndAttendDate(l.getId(), today).stream()
-                    .filter(a -> a.getStudent().getRole() == User.Role.STUDENT)
-                    .count();
-            dto.setTotalCount(total);
-            dto.setPresentCount(present);
+            dto.setTotalCount(totalMap.getOrDefault(l.getId(), 0L).intValue());
+            dto.setPresentCount(presentMap.getOrDefault(l.getId(), 0L).intValue());
             return dto;
         }).collect(Collectors.toList());
     }
@@ -112,6 +119,11 @@ public class LectureService {
 
     public Lecture findById(Long id) {
         return lectureRepo.findById(id).orElse(null);
+    }
+
+    /** 해당 강의가 특정 강사의 강의인지 확인 */
+    public boolean isOwnedByTeacher(Long lectureId, Long teacherId) {
+        return lectureRepo.existsByIdAndTeacherId(lectureId, teacherId);
     }
 
     private LectureDto toDto(Lecture l) {
