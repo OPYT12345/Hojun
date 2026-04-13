@@ -128,10 +128,13 @@ src/main/java/com/example/login/
 ├── service/        비즈니스 로직
 ├── entity/         JPA 엔티티 (DB 테이블 자동 생성)
 ├── repository/     데이터 접근
-└── dto/            요청/응답 객체
+├── dto/            요청/응답 객체
+├── exception/      전역 예외 처리
+├── filter/         보안 필터 (Rate Limit, Security Headers)
+└── util/           공통 유틸리티
 
 src/main/resources/
-├── static/         HTML 프론트엔드
+├── static/         HTML 프론트엔드 (13개 페이지)
 ├── data.sql        서버 시작 시 자동 삽입되는 샘플 데이터
 ├── init.sql        수동 DB 초기화용 (레거시)
 └── application.properties
