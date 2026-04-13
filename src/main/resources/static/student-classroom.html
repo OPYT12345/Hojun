@@ -225,6 +225,7 @@
     const lectureName = sessionStorage.getItem('lecName') || '강의';
 
     function init() {
+      applyTheme();
       if (!lectureId) { window.location.href = 'student-lectures.html'; return; }
       const name = localStorage.getItem('studentName') || '학생';
       document.getElementById('studentName').textContent   = name;

@@ -347,6 +347,7 @@
     const lectureName = sessionStorage.getItem('lecName') || '강의';
 
     function init() {
+      applyTheme();
       if (!lectureId) { window.location.href = 'teacher-lectures.html'; return; }
       const name = localStorage.getItem('teacherName') || '강사';
       document.getElementById('teacherName').textContent   = name;
