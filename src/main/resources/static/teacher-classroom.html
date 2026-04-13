@@ -14,6 +14,12 @@
       --bg:#0f0f1a;--surface:#1a1a2e;--surface2:#16213e;--surface3:#1e2040;
       --border:#2a2a4a;--text:#e2e8f0;--text-muted:#94a3b8;
     }
+    body.light{
+      --bg:#f1f5f9;--surface:#ffffff;--surface2:#f8fafc;
+      --border:#cbd5e1;--text:#0f172a;--text-muted:#64748b;
+    }
+    body{transition:background-color .25s,color .25s;}
+
     body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
 
     /* ── HEADER ── */
@@ -160,6 +166,8 @@
   </style>
 </head>
 <body>
+  <script>if(localStorage.getItem('theme')==='light')document.body.classList.add('light');</script>
+
 
   <!-- HEADER -->
   <header class="dash-header">
@@ -476,6 +484,9 @@
     }
 
     init();
+  
+    function applyTheme(){const l=localStorage.getItem('theme')==='light';document.body.classList.toggle('light',l);const b=document.getElementById('themeBtn');if(b)b.textContent=l?'🌙 다크':'☀️ 라이트';}
+    function toggleTheme(){const l=document.body.classList.toggle('light');localStorage.setItem('theme',l?'light':'dark');const b=document.getElementById('themeBtn');if(b)b.textContent=l?'🌙 다크':'☀️ 라이트';}
   </script>
 </body>
 </html>

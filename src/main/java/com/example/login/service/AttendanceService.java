@@ -6,8 +6,10 @@ import com.example.login.entity.Attendance;
 import com.example.login.entity.Lecture;
 import com.example.login.entity.LectureEnrollment;
 import com.example.login.entity.User;
+import com.example.login.repository.AssignmentRepository;
 import com.example.login.repository.AttendanceRepository;
 import com.example.login.repository.LectureEnrollmentRepository;
+import com.example.login.repository.SubmissionRepository;
 import com.example.login.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,8 @@ public class AttendanceService {
     private final UserRepository userRepo;
     private final LectureService lectureService;
     private final ObjectMapper objectMapper;
+    private final SubmissionRepository submissionRepo;
+    private final AssignmentRepository assignmentRepo;
 
     // lectureId → 연결된 SSE 이미터 목록 (강사 브라우저들)
     private final Map<Long, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
@@ -41,12 +45,16 @@ public class AttendanceService {
                              LectureEnrollmentRepository enrollmentRepo,
                              UserRepository userRepo,
                              LectureService lectureService,
-                             ObjectMapper objectMapper) {
+                             ObjectMapper objectMapper,
+                             SubmissionRepository submissionRepo,
+                             AssignmentRepository assignmentRepo) {
         this.attendanceRepo = attendanceRepo;
         this.enrollmentRepo = enrollmentRepo;
         this.userRepo = userRepo;
         this.lectureService = lectureService;
         this.objectMapper = objectMapper;
+        this.submissionRepo = submissionRepo;
+        this.assignmentRepo = assignmentRepo;
     }
 
     /** 강사 브라우저가 SSE 구독 */
@@ -141,13 +149,7 @@ public class AttendanceService {
     /** 학생 출석 이력 (강의 일정상 날짜 기준으로 출석/결석 목록) */
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getAttendanceHistory(Long studentId, Long lectureId) {
-        var lecture = lectureService.findById(lectureId);
-        if (lecture == null || lecture.getLectureStart() == null) return List.of();
-
-        Set<DayOfWeek> scheduledDays = parseScheduleDays(lecture.getSchedule());
-        if (scheduledDays.isEmpty()) return List.of();
-
-        // 출석 기록: 날짜 → 시간 문자열
+        // 실제 출석 기록을 항상 먼저 조회
         Map<LocalDate, String> attendedMap = attendanceRepo
             .findByStudentIdAndLectureId(studentId, lectureId)
             .stream()
@@ -157,23 +159,105 @@ public class AttendanceService {
                 (a, b) -> a
             ));
 
-        LocalDate start = lecture.getLectureStart();
-        LocalDate end = lecture.getLectureEnd() != null ? lecture.getLectureEnd() : LocalDate.now();
+        var lecture = lectureService.findById(lectureId);
 
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
-            if (!scheduledDays.contains(d.getDayOfWeek())) continue;
-            String time = attendedMap.get(d);
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("date",     d.toString());
-            row.put("dayName",  koreanDay(d.getDayOfWeek()));
-            row.put("attended", time != null);
-            if (time != null) row.put("time", time);
-            result.add(row);
+        // 강의 기간 + 일정이 설정된 경우 → 전체 일정 타임라인 (출석+결석 포함)
+        if (lecture != null && lecture.getLectureStart() != null) {
+            Set<DayOfWeek> scheduledDays = parseScheduleDays(lecture.getSchedule());
+            if (!scheduledDays.isEmpty()) {
+                LocalDate start = lecture.getLectureStart();
+                LocalDate today = LocalDate.now();
+                // 미래 날짜는 포함하지 않음 (미래가 전부 "결석"으로 보이는 문제 방지)
+                LocalDate end = (lecture.getLectureEnd() != null && lecture.getLectureEnd().isBefore(today))
+                        ? lecture.getLectureEnd() : today;
+
+                List<Map<String, Object>> result = new ArrayList<>();
+                Set<LocalDate> includedDates = new HashSet<>();
+
+                for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
+                    if (!scheduledDays.contains(d.getDayOfWeek())) continue;
+                    String time = attendedMap.get(d);
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("date",     d.toString());
+                    row.put("dayName",  koreanDay(d.getDayOfWeek()));
+                    row.put("attended", time != null);
+                    if (time != null) row.put("time", time);
+                    result.add(row);
+                    includedDates.add(d);
+                }
+
+                // 스케줄 외 날짜에 출석한 기록도 누락 없이 포함
+                for (Map.Entry<LocalDate, String> e : attendedMap.entrySet()) {
+                    if (!includedDates.contains(e.getKey())) {
+                        Map<String, Object> row = new LinkedHashMap<>();
+                        row.put("date",     e.getKey().toString());
+                        row.put("dayName",  koreanDay(e.getKey().getDayOfWeek()));
+                        row.put("attended", true);
+                        row.put("time",     e.getValue());
+                        result.add(row);
+                    }
+                }
+
+                result.sort(Comparator.comparing(r -> (String) r.get("date")));
+                return result;
+            }
         }
 
-        // 오래된 날짜 순 (오름차순)
-        return result;
+        // Fallback: 기간/일정 미설정 시 실제 출석 기록만 표시
+        return attendedMap.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey())
+            .map(e -> {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("date",     e.getKey().toString());
+                row.put("dayName",  koreanDay(e.getKey().getDayOfWeek()));
+                row.put("attended", true);
+                row.put("time",     e.getValue());
+                return (Map<String, Object>) row;
+            })
+            .toList();
+    }
+
+    /** 강사용 — 강의 수강생 전체 출석/과제 요약 */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getStudentSummaries(Long lectureId) {
+        var lecture = lectureService.findById(lectureId);
+        if (lecture == null) return List.of();
+
+        // 오늘까지 진행된 수업 횟수 계산
+        Set<DayOfWeek> scheduledDays = parseScheduleDays(lecture.getSchedule());
+        int totalSessions = 0;
+        if (lecture.getLectureStart() != null && !scheduledDays.isEmpty()) {
+            LocalDate start = lecture.getLectureStart();
+            LocalDate today = LocalDate.now();
+            LocalDate end = (lecture.getLectureEnd() != null && lecture.getLectureEnd().isBefore(today))
+                    ? lecture.getLectureEnd() : today;
+            for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
+                if (scheduledDays.contains(d.getDayOfWeek())) totalSessions++;
+            }
+        }
+
+        // 전체 과제 수
+        int totalAssignments = assignmentRepo.findByLectureIdOrderByCreatedAtDesc(lectureId).size();
+        int finalTotal = totalSessions;
+        int finalAsgTotal = totalAssignments;
+
+        return enrollmentRepo.findByLectureId(lectureId).stream().map(e -> {
+            User s = e.getStudent();
+            int attended  = attendanceRepo.findByStudentIdAndLectureId(s.getId(), lectureId).size();
+            int submitted = submissionRepo.findByLectureIdAndStudentId(lectureId, s.getId()).size();
+
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("studentId",       s.getId());
+            row.put("name",            s.getName());
+            row.put("email",           s.getEmail());
+            row.put("studentNumber",   s.getStudentNumber());
+            row.put("seatNum",         e.getSeatNum());
+            row.put("attendedCount",   attended);
+            row.put("totalSessions",   finalTotal);
+            row.put("submissionCount", submitted);
+            row.put("totalAssignments",finalAsgTotal);
+            return (Map<String, Object>) row;
+        }).toList();
     }
 
     private Set<DayOfWeek> parseScheduleDays(String schedule) {

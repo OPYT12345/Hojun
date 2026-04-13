@@ -13,6 +13,12 @@
       --bg:#0f0f1a;--surface:#1a1a2e;--surface2:#16213e;
       --border:#2a2a4a;--text:#e2e8f0;--text-muted:#94a3b8;
     }
+    body.light{
+      --bg:#f1f5f9;--surface:#ffffff;--surface2:#f8fafc;
+      --border:#cbd5e1;--text:#0f172a;--text-muted:#64748b;
+    }
+    body{transition:background-color .25s,color .25s;}
+
     body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
 
     .dash-header{height:60px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0;}
@@ -138,9 +144,33 @@
     .grade-done{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:8px 12px;font-size:.8rem;margin-top:8px;width:100%;}
     .grade-done-score{font-weight:800;color:var(--success);}
     .grade-done-fb{color:var(--text-muted);margin-top:3px;white-space:pre-wrap;line-height:1.4;}
+
+    /* STUDENT MANAGEMENT */
+    .student-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:10px;cursor:pointer;transition:border-color .2s;}
+    .student-card:hover{border-color:var(--cyan);}
+    .student-card-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
+    .student-info{flex:1;min-width:0;}
+    .student-name{font-size:.95rem;font-weight:700;}
+    .student-sub-info{font-size:.76rem;color:var(--text-muted);margin-top:2px;}
+    .student-stats{display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-shrink:0;}
+    .att-badge{border-radius:8px;padding:4px 10px;font-size:.78rem;font-weight:700;}
+    .att-badge.good{background:rgba(16,185,129,.15);color:var(--success);}
+    .att-badge.warn{background:rgba(245,158,11,.15);color:var(--warning);}
+    .att-badge.bad{background:rgba(239,68,68,.15);color:var(--danger);}
+    .att-badge.none{background:rgba(148,163,184,.1);color:var(--text-muted);}
+    .sub-badge{background:rgba(79,70,229,.1);border:1px solid rgba(79,70,229,.25);border-radius:8px;padding:4px 10px;font-size:.78rem;color:var(--primary-light);}
+    .att-detail{display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px;}
+    .att-detail.open{display:block;}
+    .att-table{width:100%;border-collapse:collapse;font-size:.8rem;}
+    .att-table th{color:var(--text-muted);font-weight:600;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);}
+    .att-table td{padding:6px 10px;border-bottom:1px solid rgba(42,42,74,.5);}
+    .att-ok{color:var(--success);font-weight:700;}
+    .att-absent{color:var(--danger);}
   </style>
 </head>
 <body>
+  <script>if(localStorage.getItem('theme')==='light')document.body.classList.add('light');</script>
+
 
   <header class="dash-header">
     <button class="btn-back" onclick="goBack()">← 강의 목록</button>
@@ -160,6 +190,7 @@
       <button class="tab" onclick="switchTab('assignments',this)">📋 과제 관리</button>
       <button class="tab" onclick="switchTab('qa',this)">💬 Q&A</button>
       <button class="tab" onclick="switchTab('announcements',this)">📢 공지</button>
+      <button class="tab" onclick="switchTab('students',this)">👥 학생 관리</button>
       <button class="tab" onclick="switchTab('settings',this)">⚙️ 강의 설정</button>
     </div>
 
@@ -303,6 +334,12 @@
       <div class="section-title">공지 목록</div>
       <div id="announcementList"><div class="empty-state">불러오는 중...</div></div>
     </div>
+
+    <!-- 학생 관리 -->
+    <div class="tab-panel" id="tab-students">
+      <div class="section-title">수강 학생 목록</div>
+      <div id="studentList"><div class="empty-state">불러오는 중...</div></div>
+    </div>
   </main>
 
   <script>
@@ -332,6 +369,7 @@
       document.getElementById('tab-' + name).classList.add('active');
       if (name === 'settings') loadPeriod();
       if (name === 'announcements') loadAnnouncements();
+      if (name === 'students') loadStudents();
     }
 
     /* ── 강의 기간 로드 ── */
@@ -896,6 +934,86 @@
       if (res && res.ok) loadAnnouncements();
     }
 
+    /* ── 학생 관리 ── */
+    async function loadStudents() {
+      const list = document.getElementById('studentList');
+      list.innerHTML = '<div class="empty-state">불러오는 중...</div>';
+      const res = await fetch(`/api/teacher/lectures/${lectureId}/students`).catch(() => null);
+      if (!res || !res.ok) { list.innerHTML = '<div class="empty-state">학생 목록을 불러올 수 없습니다.</div>'; return; }
+      const data = await res.json();
+      if (!data.length) { list.innerHTML = '<div class="empty-state">수강 등록된 학생이 없습니다.</div>'; return; }
+
+      list.innerHTML = data.map(s => {
+        const rate = s.totalSessions > 0 ? Math.round(s.attendedCount / s.totalSessions * 100) : null;
+        const attClass = rate === null ? 'none' : rate >= 80 ? 'good' : rate >= 60 ? 'warn' : 'bad';
+        const attText  = rate === null
+          ? '기간 미설정'
+          : `출석 ${s.attendedCount}/${s.totalSessions}회 (${rate}%)`;
+        const subText  = s.totalAssignments > 0
+          ? `과제 ${s.submissionCount}/${s.totalAssignments}건 제출`
+          : '과제 없음';
+        return `
+        <div class="student-card" id="sc-${s.studentId}" onclick="toggleAttDetail(${s.studentId})">
+          <div class="student-card-top">
+            <div class="student-info">
+              <div class="student-name">${esc(s.name)}${s.studentNumber ? ` <span style="font-weight:400;font-size:.8rem;color:var(--text-muted);">(${esc(s.studentNumber)})</span>` : ''}</div>
+              <div class="student-sub-info">${esc(s.email)} · ${s.seatNum}번 자리</div>
+            </div>
+            <div class="student-stats">
+              <span class="att-badge ${attClass}">${attText}</span>
+              <span class="sub-badge">${subText}</span>
+            </div>
+          </div>
+          <div class="att-detail" id="att-detail-${s.studentId}">
+            <div style="font-size:.78rem;color:var(--text-muted);text-align:center;padding:8px;">▾ 출석 이력을 클릭해서 확인</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    let attDetailLoaded = {};
+
+    async function toggleAttDetail(studentId) {
+      const detail = document.getElementById(`att-detail-${studentId}`);
+      const isOpen = detail.classList.contains('open');
+      if (isOpen) { detail.classList.remove('open'); return; }
+      detail.classList.add('open');
+
+      // 이미 로드됐으면 재요청 생략
+      if (attDetailLoaded[studentId]) return;
+      attDetailLoaded[studentId] = true;
+
+      detail.innerHTML = '<div style="font-size:.78rem;color:var(--text-muted);text-align:center;padding:8px;">불러오는 중...</div>';
+      const res = await fetch(`/api/teacher/lectures/${lectureId}/students/${studentId}/attendance`).catch(() => null);
+      if (!res || !res.ok) {
+        detail.innerHTML = '<div style="font-size:.8rem;color:var(--danger);padding:8px;">출석 이력을 불러올 수 없습니다.</div>';
+        attDetailLoaded[studentId] = false;
+        return;
+      }
+      const data = await res.json();
+      if (!data.length) {
+        detail.innerHTML = '<div style="font-size:.8rem;color:var(--text-muted);padding:8px;text-align:center;">출석 이력 없음 (강의 기간 미설정 또는 아직 수업 없음)</div>';
+        return;
+      }
+      const attended = data.filter(d => d.attended).length;
+      const total    = data.length;
+      const rate     = Math.round(attended / total * 100);
+      const rows = data.map(d => `
+        <tr>
+          <td>${esc(d.date)} (${esc(d.dayName)})</td>
+          <td class="${d.attended ? 'att-ok' : 'att-absent'}">${d.attended ? '✓ 출석' : '✗ 결석'}</td>
+          <td style="color:var(--text-muted);">${d.time || '-'}</td>
+        </tr>`).join('');
+      detail.innerHTML = `
+        <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:8px;">
+          총 ${total}회 수업 · 출석 ${attended}회 · 결석 ${total - attended}회 · 출석률 <strong style="color:${rate>=80?'var(--success)':rate>=60?'var(--warning)':'var(--danger)'}">${rate}%</strong>
+        </div>
+        <table class="att-table">
+          <thead><tr><th>날짜</th><th>출결</th><th>출석 시각</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+
     function goBack() { window.location.href = 'teacher-lectures.html'; }
     function logout() {
       fetch('/api/logout',{method:'POST'}).catch(()=>{});
@@ -905,6 +1023,9 @@
     }
 
     init();
+  
+    function applyTheme(){const l=localStorage.getItem('theme')==='light';document.body.classList.toggle('light',l);const b=document.getElementById('themeBtn');if(b)b.textContent=l?'🌙 다크':'☀️ 라이트';}
+    function toggleTheme(){const l=document.body.classList.toggle('light');localStorage.setItem('theme',l?'light':'dark');const b=document.getElementById('themeBtn');if(b)b.textContent=l?'🌙 다크':'☀️ 라이트';}
   </script>
 </body>
 </html>
