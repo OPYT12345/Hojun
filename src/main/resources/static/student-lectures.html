@@ -26,8 +26,9 @@
     .logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--primary-dark),var(--primary-light));display:flex;align-items:center;justify-content:center;font-size:16px;}
     .header-badge{background:rgba(79,70,229,.12);border:1px solid rgba(79,70,229,.25);border-radius:8px;padding:4px 10px;font-size:.75rem;color:var(--primary-light);font-weight:600;}
     .spacer{flex:1;}
-    .btn-theme{background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:5px 11px;font-size:.8rem;cursor:pointer;transition:all .2s;white-space:nowrap;}
-    .btn-theme:hover{border-color:var(--primary-light);color:var(--primary-light);}
+    .theme-toggle{display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px;cursor:pointer;gap:0;user-select:none;flex-shrink:0;}
+    .theme-opt{padding:4px 12px;font-size:.78rem;font-weight:600;color:var(--text-muted);border-radius:16px;transition:all .2s;white-space:nowrap;}
+    .theme-opt.active{background:var(--primary);color:#fff;box-shadow:0 1px 6px rgba(79,70,229,.35);}
     .user-chip{display:flex;align-items:center;gap:8px;font-size:.84rem;color:var(--text-muted);}
     .user-av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--primary-dark),var(--primary-light));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;}
     .btn-logout{background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:5px 12px;font-size:.75rem;cursor:pointer;transition:all .2s;margin-left:4px;}
@@ -218,7 +219,10 @@
     <div class="notif-wrap" id="notifWrap">
       <button class="btn-bell" id="btnBell" onclick="toggleNotif()" title="알림">🔔<span class="bell-badge" id="bellBadge" style="display:none;"></span></button>
     </div>
-    <button class="btn-theme" id="themeBtn" onclick="toggleTheme()">☀️ 라이트</button>
+    <div class="theme-toggle" onclick="toggleTheme()">
+      <span class="theme-opt" id="themeOptDark">🌙 다크</span>
+      <span class="theme-opt" id="themeOptLight">☀️ 라이트</span>
+    </div>
     <button class="btn-logout" onclick="openPwModal()" style="margin-right:4px;">비밀번호 수정</button>
     <button class="btn-logout" onclick="logout()">로그아웃</button>
   </header>
@@ -698,8 +702,8 @@
 
     init();
   
-    function applyTheme(){const l=localStorage.getItem('theme')==='light';document.body.classList.toggle('light',l);const b=document.getElementById('themeBtn');if(b)b.textContent=l?'🌙 다크':'☀️ 라이트';}
-    function toggleTheme(){const l=document.body.classList.toggle('light');localStorage.setItem('theme',l?'light':'dark');const b=document.getElementById('themeBtn');if(b)b.textContent=l?'🌙 다크':'☀️ 라이트';}
+    function applyTheme(){const l=localStorage.getItem('theme')==='light';document.body.classList.toggle('light',l);const d=document.getElementById('themeOptDark');const lt=document.getElementById('themeOptLight');if(d)d.classList.toggle('active',!l);if(lt)lt.classList.toggle('active',l);}
+    function toggleTheme(){const l=document.body.classList.toggle('light');localStorage.setItem('theme',l?'light':'dark');const d=document.getElementById('themeOptDark');const lt=document.getElementById('themeOptLight');if(d)d.classList.toggle('active',!l);if(lt)lt.classList.toggle('active',l);}
   </script>
 
   <!-- 출석 현황 모달 -->
